@@ -17,7 +17,7 @@ F2开局。
 export const ABOUT_TEXT = `${APP_TITLE} ${APP_VERSION}
 基于 Microsoft® 扫雷（原版作者：Robert Donner、Curt Johnson）
 
-本程序是 complexweeper-A-minesweeper-game（作者：青月晓）的 Web 修改版，
+本程序是 complexweeper（作者：青月晓）的 Web 移植版，
 原仓库：github.com/Yueqing-Chen/complexweeper-A-minesweeper-game
 感谢原作者及各位贡献者，原作与本修改版均按 GPL-3.0 发布。
 

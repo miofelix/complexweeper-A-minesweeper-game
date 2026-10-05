@@ -2,7 +2,7 @@
 // 版本号在构建时不必更新——以网络优先回退缓存的策略处理 index.html，
 // 静态资源（带 hash 的 JS/CSS、图集）用缓存优先。
 
-const CACHE = 'complexweeper-v1';
+const CACHE = 'complexweeper-web-v1';
 const CORE = ['./', './manifest.webmanifest', './assets/atlas.png', './assets/atlas.json'];
 
 self.addEventListener('install', (e) => {

@@ -1,9 +1,9 @@
 {
-  "name": "complexweeper",
+  "name": "complexweeper-web",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "复扫雷 Complexweeper — 雷是复数的扫雷（Web 版）",
+  "description": "复扫雷 Complexweeper — 雷是复数的扫雷（Web 移植版）",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -1,7 +1,7 @@
 // 最高分纪录：三档标准难度各记最快秒数，localStorage 持久化。
 // 替代桌面版的注册表（HKCU\Software\Complexweeper）。接口隔离，未来可换后端实现。
 
-const KEY = 'complexweeper.scores.v1';
+const KEY = 'complexweeper-web.scores.v1';
 
 export interface Scores {
   /** 下标 0/1/2 = 初级/中级/高级；0 = 还没有纪录 */

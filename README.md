@@ -1,4 +1,4 @@
-# 复扫雷 Complexweeper
+# 复扫雷 Complexweeper（Web 版）
 
 > [English README](README.en.md)
 
@@ -8,11 +8,11 @@
 
 **纯静态 Web 应用**：Vite + TypeScript + Canvas 2D，无运行时依赖、无后端，构建产物可直接托管到任意静态平台，支持 PWA 离线游玩。
 
-**在线试玩**：https://miofelix.github.io/complexweeper-A-minesweeper-game/
+**在线试玩**：https://miofelix.github.io/complexweeper-web/
 
 ## 出处与致谢
 
-本仓库是 [Yueqing-Chen/complexweeper-A-minesweeper-game](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game) 的修改版本（fork）：原作为青月晓开发的 Zig + Win32 桌面程序，本仓库在其基础上重构为 Web 应用，游戏规则与图像素材均沿用原作。
+本仓库是 [Yueqing-Chen/complexweeper-A-minesweeper-game](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game) 的修改版本（fork）：原作为青月晓开发的 Zig + Win32 桌面程序，本仓库在其基础上重构为 Web 应用，游戏规则与图像素材均沿用原作。本仓库专注于 Web 移植版，由 [@miofelix](https://github.com/miofelix) 维护；桌面原版请见上游仓库。
 
 感谢原作者青月晓设计并开源了这个独特的复数扫雷，也感谢 [VoidForge](https://github.com/VoidForge) 等贡献者对原仓库的修复与改进。原作代码按 GPL-3.0 授权，本仓库的修改同样以 GPL-3.0 发布（见 `LICENSE`）。
 
