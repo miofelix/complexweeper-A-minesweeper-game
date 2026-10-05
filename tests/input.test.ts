@@ -139,6 +139,23 @@ describe('touch gestures', () => {
 });
 
 describe('mouse gestures', () => {
+  it.each([true, false])('does not reveal a different cell after a chord releases right first (inside: %s)', (inside) => {
+    const { game, input, center } = setup();
+    game.startAt(40, 0);
+    const covered = Array.from({ length: game.n }, (_, i) => i).find(i => !game.open[i])!;
+    input.onMouseDown({ button: 0 } as MouseEvent, ...center(40));
+    input.onMouseDown({ button: 2 } as MouseEvent, ...center(40));
+    if (!inside) input.onMouseMove(-10, -10);
+    input.onMouseUp({ button: 2 } as MouseEvent, ...(inside ? center(40) : [-10, -10] as [number, number]));
+    input.onMouseMove(...center(covered));
+    expect(input.pressCell).toBe(-1);
+    input.onMouseUp({ button: 0 } as MouseEvent, ...center(covered));
+    expect(game.open[covered]).toBe(0);
+
+    input.onMouseDown({ button: 0 } as MouseEvent, ...center(covered));
+    expect(input.pressCell).toBe(covered);
+    input.resetGesture();
+  });
   it('keeps a flagged cell visible during a left press', () => {
     const { game, input, center } = setup();
     game.setFlag(0, 3);

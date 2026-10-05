@@ -32,6 +32,7 @@ export class InputController {
   private l_down = false;
   private r_down = false;
   private m_down = false;
+  private mouse_chord_consumed = false;
   private face_down = false;
   private face_armed = false;
   private touch_flag_mode = false;
@@ -80,6 +81,7 @@ export class InputController {
     this.l_down = false;
     this.r_down = false;
     this.m_down = false;
+    this.mouse_chord_consumed = false;
     this.face_down = false;
     this.face_armed = false;
     this.clearLongPress();
@@ -93,6 +95,7 @@ export class InputController {
   // ---------------------------------------------------------------- 共用动作
   private doExpand(c: number): void {
     const g = this.h.game;
+    if (g.over || c < 0 || c >= g.n || g.open[c] === 0 || g.mine[c] !== 0) return;
     const m0 = g.moves;
     g.tryExpand(c);
     if (g.over) {
@@ -127,6 +130,8 @@ export class InputController {
 
   // ---------------------------------------------------------------- 鼠标
   onMouseDown(e: MouseEvent, px: number, py: number): void {
+    if (!this.l_down && !this.r_down && !this.m_down) this.mouse_chord_consumed = false;
+    if (this.mouse_chord_consumed) return;
     const L = this.h.getLayout();
     const g = this.h.game;
     const c = cellAt(L, g, px, py);
@@ -167,6 +172,7 @@ export class InputController {
   }
 
   onMouseMove(px: number, py: number): void {
+    if (this.mouse_chord_consumed) return;
     const L = this.h.getLayout();
     const g = this.h.game;
     const c = cellAt(L, g, px, py);
@@ -197,6 +203,8 @@ export class InputController {
   onMouseUp(e: MouseEvent, px: number, py: number): void {
     const L = this.h.getLayout();
     const g = this.h.game;
+    const was_chord = this.m_down || (this.l_down && this.r_down) || this.chord_cell >= 0;
+    if (was_chord) this.mouse_chord_consumed = true;
     if (e.button === 0) {
       const held = this.press_cell;
       const chord = this.chord_cell;
@@ -238,6 +246,7 @@ export class InputController {
       if (chord >= 0 && cellAt(L, g, px, py) === chord) this.doExpand(chord);
       this.h.requestRender();
     }
+    if (!this.l_down && !this.r_down && !this.m_down) this.mouse_chord_consumed = false;
   }
 
   // ---------------------------------------------------------------- 触屏（Pointer Events）
