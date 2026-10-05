@@ -20,15 +20,27 @@ export function loadScores(): Scores {
   }
 }
 
-export function saveScores(s: Scores): void {
+export function saveScores(s: Scores): Scores {
+  const merged = mergeScores(s, loadScores());
   try {
-    localStorage.setItem(KEY, JSON.stringify(s));
+    localStorage.setItem(KEY, JSON.stringify(merged));
   } catch {
     // 隐私模式等写不进去就静默放弃（不影响玩）
   }
+  return merged;
+}
+
+export function mergeScores(s: Scores, stored: Scores): Scores {
+  const best = s.best.map((value, index) => {
+    const incoming = num(value);
+    const current = stored.best[index];
+    if (incoming === 0) return current;
+    if (current === 0) return incoming;
+    return Math.min(incoming, current);
+  }) as Scores['best'];
+  return { best };
 }
 
 function num(v: unknown): number {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  return typeof v === 'number' && Number.isSafeInteger(v) && v > 0 ? v : 0;
 }

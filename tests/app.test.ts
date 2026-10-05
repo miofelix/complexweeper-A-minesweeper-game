@@ -4,7 +4,7 @@ import { App } from '../src/app/app';
 import { Game } from '../src/game/game';
 import { InputController } from '../src/input/input';
 import { makeLayout } from '../src/render/layout';
-import { loadScores } from '../src/app/storage';
+import { loadScores, saveScores } from '../src/app/storage';
 import { closeDialog, isDialogOpen, showCustomDialog, showScores } from '../src/app/dialogs';
 
 vi.mock('../src/app/dialogs', () => ({
@@ -57,6 +57,34 @@ afterEach(() => {
 });
 
 describe('score eligibility', () => {
+  it('does not announce a slower stale-tab win as a new record', () => {
+    const app = makeApp();
+    saveScores({ best: [8, 24, 35] });
+    win(app);
+    expect(loadScores().best).toEqual([8, 24, 35]);
+    expect(showScores).not.toHaveBeenCalled();
+    app.showScores();
+    expect(showScores).toHaveBeenLastCalledWith({ best: [8, 24, 35] }, false);
+  });
+
+  it('retains records from other tabs when a new faster score is saved', () => {
+    const app = makeApp();
+    saveScores({ best: [20, 24, 35] });
+    win(app);
+    expect(loadScores().best).toEqual([12, 24, 35]);
+    expect(showScores).toHaveBeenLastCalledWith({ best: [12, 24, 35] }, true);
+  });
+
+  it('keeps an in-memory record visible when persistent storage is unavailable', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => { throw new Error('Storage denied'); },
+      setItem: () => { throw new Error('Storage denied'); },
+    });
+    const app = makeApp();
+    win(app);
+    app.showScores();
+    expect(showScores).toHaveBeenLastCalledWith({ best: [12, 0, 0] }, false);
+  });
   it('records wins from each selected standard preset', () => {
     const app = makeApp();
     for (let preset = 0; preset < 3; preset++) {

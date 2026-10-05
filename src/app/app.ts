@@ -6,7 +6,7 @@ import { Atlas } from '../render/atlas';
 import { Renderer } from '../render/renderer';
 import { makeLayout } from '../render/layout';
 import { InputController, nowMs } from '../input/input';
-import { loadScores, saveScores, type Scores } from './storage';
+import { loadScores, mergeScores, saveScores, type Scores } from './storage';
 import { isDialogOpen, showAbout, showCustomDialog, showHelp, showScores } from './dialogs';
 import { APP_TITLE, APP_VERSION } from './strings';
 
@@ -124,11 +124,12 @@ export class App {
     if (!this.game.win) return;
     const idx = this.presetIndex();
     if (idx < 0) return;
+    this.scores = mergeScores(this.scores, loadScores());
     const sec = Math.max(1, Math.floor(this.game.elapsed_ms / 1000));
     if (this.scores.best[idx] !== 0 && sec >= this.scores.best[idx]) return;
     this.scores.best[idx] = sec;
-    saveScores(this.scores);
-    showScores(this.scores, true);
+    this.scores = saveScores(this.scores);
+    if (this.scores.best[idx] === sec) showScores(this.scores, true);
   }
 
   private afterAction(opts: { flashFace: boolean; startTimer: boolean; faceRestart?: boolean }): void {
@@ -205,6 +206,7 @@ export class App {
   showScores(): void {
     this.input.resetGesture();
     this.requestRender();
+    this.scores = mergeScores(this.scores, loadScores());
     showScores(this.scores, false);
   }
 
