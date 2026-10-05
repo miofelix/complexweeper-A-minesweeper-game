@@ -20,6 +20,7 @@ export class App {
   private renderer!: Renderer;
   private input!: InputController;
   private zoom = 2;
+  private selected_preset = 0;
   private scores: Scores = loadScores();
   private timer_id: number | null = null;
   private face_flash_until = 0;
@@ -112,11 +113,7 @@ export class App {
   }
 
   private presetIndex(): number {
-    for (let i = 0; i < PRESETS.length; i++) {
-      const p = PRESETS[i];
-      if (this.game.w === p.w && this.game.h === p.h && this.game.mines === p.mines) return i;
-    }
-    return -1;
+    return this.selected_preset;
   }
 
   onGameOver(): void {
@@ -160,6 +157,7 @@ export class App {
 
   setPreset(idx: number): void {
     const p = PRESETS[idx];
+    this.selected_preset = idx;
     this.game.w = p.w;
     this.game.h = p.h;
     this.game.mines = p.mines;
@@ -182,6 +180,7 @@ export class App {
       typeCount: Array.from(this.game.type_count),
     });
     if (!res.applied || !res.config) return;
+    this.selected_preset = -1;
     this.game.w = res.config.w;
     this.game.h = res.config.h;
     this.game.mines = res.config.mines;

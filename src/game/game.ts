@@ -259,6 +259,7 @@ export class Game {
     this.t0 = now_ms;
     this.moves = 1;
     this.setMsg(Msg.none);
+    this.checkWin();
   }
 
   /** 插/改/清旗。旗帜不限量，永远成功 */
@@ -349,8 +350,8 @@ export class Game {
     }
     this.cascadeOpen(uns);
     this.moves++;
-    this.msg_arg = uns.length;
     this.setMsg(Msg.expand_ok);
+    this.msg_arg = uns.length;
     this.checkWin();
   }
 

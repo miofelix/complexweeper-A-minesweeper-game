@@ -101,9 +101,9 @@ export class InputController {
     const covered = g.open[c] === 0;
     if (!g.started) {
       g.startAt(c, nowMs());
-      g.setMsg(Msg.started);
+      if (!g.over) g.setMsg(Msg.started);
       if (g.over) this.h.onGameOver();
-      this.h.onAction({ flashFace: covered && !g.over, startTimer: true });
+      this.h.onAction({ flashFace: covered && !g.over, startTimer: !g.over });
       return;
     }
     g.reveal(c, nowMs());

@@ -361,6 +361,40 @@ describe('8 旗子保护格子', () => {
 });
 
 describe('9 胜负判定', () => {
+  it('开局连片翻开全部安全格时立即判胜并保留胜利消息', () => {
+    const g = buildBoard(9, 9, 1, [0, 1, 0, 0, 0], 1, 0);
+    expect(g.openedCount()).toBe(g.safeCount());
+    expect(g.started).toBe(true);
+    expect(g.over).toBe(true);
+    expect(g.win).toBe(true);
+    expect(g.msg).toBe(Msg.win);
+    expect(g.moves).toBe(1);
+    expect(g.boom).toBe(-1);
+  });
+
+  it('开局前的旗子保护安全格，撤旗并翻开最后一格后才判胜', () => {
+    const g = new Game();
+    g.mines = 1;
+    g.type_count.set([0, 1, 0, 0, 0]);
+    g.newGame(1);
+    g.setFlag(1, 3);
+    g.startAt(0, 100);
+    expect(g.mine[1]).toBe(0);
+    expect(g.flag[1]).toBe(3);
+    expect(g.flags_of[3]).toBe(1);
+    expect(g.open[1]).toBe(0);
+    expect(g.openedCount()).toBe(g.safeCount() - 1);
+    expect(g.over).toBe(false);
+    expect(g.win).toBe(false);
+
+    g.setFlag(1, 0);
+    g.reveal(1, 250);
+    expect(g.openedCount()).toBe(g.safeCount());
+    expect(g.over).toBe(true);
+    expect(g.win).toBe(true);
+    expect(g.msg).toBe(Msg.win);
+  });
+
   it('翻开所有非雷格必须判胜', () => {
     const g = buildBoard(9, 9, 10, [0, 0, 0, 0, 0], 901, 40);
     for (let i = 0; i < g.n; i++) {
@@ -400,6 +434,25 @@ describe('9 胜负判定', () => {
 });
 
 describe('10 展开通过时翻开周围未插旗格', () => {
+  it('成功展开保留待展开邻格数作为反馈', () => {
+    const g = buildBoard(9, 9, 10, [0, 0, 0, 0, 0], 1, 40);
+    const cell = 30;
+    expect(g.open[cell]).toBe(1);
+    const buf: number[] = [];
+    const k = g.nbrs(cell, buf);
+    for (const j of buf.slice(0, k)) {
+      if (g.mine[j] !== 0) g.setFlag(j, g.mine[j]);
+    }
+    const pending = buf.slice(0, k).filter((j) => g.open[j] === 0 && g.flag[j] === 0);
+    expect(pending.length).toBeGreaterThan(0);
+
+    g.tryExpand(cell);
+    expect(g.over).toBe(false);
+    expect(g.msg).toBe(Msg.expand_ok);
+    expect(g.msg_arg).toBe(pending.length);
+    for (const j of pending) expect(g.open[j]).toBe(1);
+  });
+
   it('判据通过 → 未插旗邻格被翻开；踩雷判负', () => {
     // 造一个一定能通过判据的格局：找到已开格，把它周围雷全部正确插旗
     const g = buildBoard(9, 9, 10, [0, 0, 0, 0, 0], 1001, 40);
