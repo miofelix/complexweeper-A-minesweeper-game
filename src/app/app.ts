@@ -7,7 +7,7 @@ import { Renderer } from '../render/renderer';
 import { makeLayout } from '../render/layout';
 import { InputController, nowMs } from '../input/input';
 import { loadScores, saveScores, type Scores } from './storage';
-import { showAbout, showCustomDialog, showHelp, showScores } from './dialogs';
+import { isDialogOpen, showAbout, showCustomDialog, showHelp, showScores } from './dialogs';
 import { APP_TITLE, APP_VERSION } from './strings';
 
 const FACE_FLASH_MS = 200;
@@ -183,6 +183,8 @@ export class App {
   }
 
   async openCustomDialog(): Promise<void> {
+    this.input.resetGesture();
+    this.requestRender();
     const res = await showCustomDialog({
       w: this.game.w,
       h: this.game.h,
@@ -201,6 +203,8 @@ export class App {
   }
 
   showScores(): void {
+    this.input.resetGesture();
+    this.requestRender();
     showScores(this.scores, false);
   }
 
@@ -219,9 +223,13 @@ export class App {
     });
   }
   showHelp(): void {
+    this.input.resetGesture();
+    this.requestRender();
     showHelp();
   }
   showAbout(): void {
+    this.input.resetGesture();
+    this.requestRender();
     showAbout();
   }
 
@@ -291,8 +299,8 @@ export class App {
     // F2 开局
     window.addEventListener('keydown', (e) => {
       if (e.key === 'F2') {
-        this.newGame();
         e.preventDefault();
+        if (!isDialogOpen()) this.newGame();
       }
     });
   }

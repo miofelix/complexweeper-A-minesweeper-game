@@ -100,13 +100,22 @@
         align-items: center;
         justify-content: center;
         z-index: 10;
+        padding: 12px;
+        overscroll-behavior: contain;
+      }
+      body:has(.dlg-overlay) {
+        overflow: hidden;
       }
       .dlg-box {
         background: #fff;
         border: 1px solid #404040;
         box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
-        min-width: 300px;
-        max-width: min(92vw, 420px);
+        width: min(100%, 420px);
+        min-width: 0;
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
+        display: flex;
+        flex-direction: column;
       }
       .dlg-title {
         background: #000080;
@@ -114,15 +123,22 @@
         font-size: 13px;
         font-weight: bold;
         padding: 4px 8px;
+        flex: none;
       }
       .dlg-body {
         padding: 14px 16px;
         font-size: 13px;
+        min-height: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+        -webkit-user-select: text;
+        user-select: text;
       }
       .dlg-text {
         white-space: pre-wrap;
         line-height: 1.7;
         margin-bottom: 14px;
+        overflow-wrap: anywhere;
       }
       .dlg-row {
         display: flex;
@@ -136,7 +152,10 @@
       }
       .dlg-row input {
         width: 70px;
-        font: 13px/1.4 inherit;
+        font-family: inherit;
+        font-size: 16px;
+        line-height: 1.4;
+        min-height: 32px;
         padding: 2px 4px;
         border: 2px solid;
         border-color: var(--shadow) var(--hilight) var(--hilight) var(--shadow);
@@ -146,9 +165,20 @@
       }
       .dlg-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         column-gap: 18px;
         margin: 4px 0 6px;
+      }
+      .dlg-grid .dlg-row label {
+        width: 56px;
+      }
+      .dlg-grid .dlg-row input {
+        flex: 1;
+        min-width: 0;
+        max-width: 70px;
+      }
+      .dlg-row:has(.dlg-error) {
+        flex-wrap: wrap;
       }
       .dlg-error {
         color: #a00;
@@ -164,7 +194,9 @@
       .dlg-btn {
         min-width: 88px;
         padding: 5px 12px;
-        font: 13px/1.2 inherit;
+        font-family: inherit;
+        font-size: 13px;
+        line-height: 1.2;
         background: var(--btnface);
         border: 2px solid;
         border-color: var(--hilight) var(--shadow) var(--shadow) var(--hilight);
@@ -180,8 +212,13 @@
         }
       }
       @media (max-width: 640px), (pointer: coarse) {
-        button.tool {
+        button.tool,
+        .dlg-btn,
+        .dlg-row input {
           min-height: 44px;
+        }
+        button.tool,
+        .dlg-btn {
           padding: 10px;
         }
       }

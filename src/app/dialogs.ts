@@ -13,54 +13,101 @@ export interface CustomConfig {
   mines: number;
 }
 
-let overlay: HTMLDivElement | null = null;
+interface DialogState {
+  overlay: HTMLDivElement;
+  returnFocus: HTMLElement | null;
+  background: { element: HTMLElement; inert: boolean }[];
+  onClose?: () => void;
+  keydown: (e: KeyboardEvent) => void;
+  focusin: (e: FocusEvent) => void;
+}
+
+let dialog: DialogState | null = null;
+let dialogId = 0;
+
+function focusableElements(box: HTMLElement): HTMLElement[] {
+  return Array.from(box.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href], [tabindex]'))
+    .filter((el) => el.tabIndex >= 0 && !el.matches(':disabled') && !el.closest('[hidden]'));
+}
 
 function openDialog(title: string, body: HTMLElement, onClose?: () => void): void {
   closeDialog();
-  overlay = document.createElement('div');
+  const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const overlay = document.createElement('div');
   overlay.className = 'dlg-overlay';
   const box = document.createElement('div');
   box.className = 'dlg-box';
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', title);
+  box.setAttribute('aria-modal', 'true');
+  box.tabIndex = -1;
   const head = document.createElement('div');
+  head.id = `dlg-title-${++dialogId}`;
   head.className = 'dlg-title';
   head.textContent = title;
+  box.setAttribute('aria-labelledby', head.id);
   box.appendChild(head);
   box.appendChild(body);
   overlay.appendChild(box);
-  overlay.addEventListener('mousedown', (e) => {
-    if (e.target === overlay) {
-      closeDialog();
-      onClose?.();
-    }
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeDialog();
   });
-  document.addEventListener('keydown', escClose);
-  document.body.appendChild(overlay);
-
-  function escClose(e: KeyboardEvent): void {
+  const keydown = (e: KeyboardEvent): void => {
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
       closeDialog();
-      onClose?.();
+    } else if (e.key === 'Tab') {
+      const controls = focusableElements(box);
+      const first = controls[0] ?? box;
+      const last = controls[controls.length - 1] ?? box;
+      if (!box.contains(document.activeElement) || controls.length === 0) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
-  }
-  (overlay as any).__esc = escClose;
+  };
+  const focusin = (e: FocusEvent): void => {
+    if (e.target instanceof Node && !box.contains(e.target)) {
+      (focusableElements(box)[0] ?? box).focus({ preventScroll: true });
+    }
+  };
+  const background = Array.from(document.body.children)
+    .filter((element): element is HTMLElement => element instanceof HTMLElement)
+    .map((element) => ({ element, inert: element.inert }));
+  background.forEach(({ element }) => { element.inert = true; });
+  dialog = { overlay, returnFocus, background, onClose, keydown, focusin };
+  document.addEventListener('keydown', keydown, true);
+  document.addEventListener('focusin', focusin);
+  document.body.appendChild(overlay);
+  (focusableElements(box)[0] ?? box).focus({ preventScroll: true });
 }
 
 export function closeDialog(): void {
-  if (overlay) {
-    document.removeEventListener('keydown', (overlay as any).__esc);
-    overlay.remove();
-    overlay = null;
-  }
+  if (!dialog) return;
+  const closed = dialog;
+  dialog = null;
+  document.removeEventListener('keydown', closed.keydown, true);
+  document.removeEventListener('focusin', closed.focusin);
+  closed.overlay.remove();
+  closed.background.forEach(({ element, inert }) => { element.inert = inert; });
+  if (closed.returnFocus?.isConnected) closed.returnFocus.focus({ preventScroll: true });
+  closed.onClose?.();
 }
 
 export function isDialogOpen(): boolean {
-  return overlay !== null;
+  return dialog !== null;
 }
 
 function makeButton(label: string, primary = false): HTMLButtonElement {
   const b = document.createElement('button');
+  b.type = 'button';
   b.textContent = label;
   b.className = primary ? 'dlg-btn primary' : 'dlg-btn';
   return b;
@@ -79,7 +126,6 @@ function makeInfoBody(text: string): HTMLElement {
   ok.addEventListener('click', () => closeDialog());
   row.appendChild(ok);
   body.appendChild(row);
-  queueMicrotask(() => ok.focus());
   return body;
 }
 
@@ -110,7 +156,6 @@ export function showScores(scores: Scores, highlight: boolean): void {
   row.appendChild(ok);
   body.appendChild(row);
   openDialog(highlight ? '新纪录！' : '最高分纪录', body);
-  queueMicrotask(() => ok.focus());
 }
 
 export interface CustomDialogResult {
@@ -125,29 +170,40 @@ export function showCustomDialog(current: { w: number; h: number; mines: number;
     body.className = 'dlg-body dlg-custom';
 
     const err = document.createElement('div');
+    err.id = 'dlg-custom-error';
     err.className = 'dlg-error';
+    err.setAttribute('role', 'alert');
 
     const inputs: HTMLInputElement[] = [];
-    const mkRow = (labelText: string, hint: string, value: number): HTMLInputElement => {
+    const mkInput = (label: HTMLLabelElement, id: string, value: number): HTMLInputElement => {
+      const input = document.createElement('input');
+      input.id = id;
+      label.htmlFor = id;
+      input.type = 'text';
+      input.inputMode = 'numeric';
+      input.value = String(value);
+      input.setAttribute('aria-describedby', err.id);
+      inputs.push(input);
+      return input;
+    };
+    const mkRow = (id: string, labelText: string, hint: string, value: number): HTMLInputElement => {
       const row = document.createElement('div');
       row.className = 'dlg-row';
       const label = document.createElement('label');
       label.textContent = labelText;
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.inputMode = 'numeric';
-      input.value = String(value);
+      const input = mkInput(label, id, value);
       const span = document.createElement('span');
+      span.id = `${id}-hint`;
       span.className = 'dlg-hint';
       span.textContent = hint;
+      input.setAttribute('aria-describedby', `${span.id} ${err.id}`);
       row.append(label, input, span);
       body.appendChild(row);
-      inputs.push(input);
       return input;
     };
 
-    const hInput = mkRow(DLG.height, DLG.heightHint, current.h);
-    const wInput = mkRow(DLG.width, DLG.widthHint, current.w);
+    const hInput = mkRow('dlg-custom-height', DLG.height, DLG.heightHint, current.h);
+    const wInput = mkRow('dlg-custom-width', DLG.width, DLG.widthHint, current.w);
 
     // 四类雷配比（两列排布）
     const grid = document.createElement('div');
@@ -161,22 +217,48 @@ export function showCustomDialog(current: { w: number; h: number; mines: number;
       cell.className = 'dlg-row';
       const label = document.createElement('label');
       label.textContent = name;
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.inputMode = 'numeric';
-      input.value = String(tc[k + 1]);
+      const input = mkInput(label, `dlg-custom-type-${k + 1}`, tc[k + 1]);
       cell.append(label, input);
       grid.appendChild(cell);
       tInputs.push(input);
     });
     body.appendChild(grid);
 
+    const clearError = (): void => {
+      err.textContent = '';
+      inputs.forEach((input) => input.removeAttribute('aria-invalid'));
+    };
+    const showError = (message: string, invalid: HTMLInputElement[]): void => {
+      err.textContent = message;
+      invalid.forEach((input) => input.setAttribute('aria-invalid', 'true'));
+      invalid[0].focus();
+    };
+    const readCounts = (): number[] | null => {
+      const counts = [0];
+      for (const input of tInputs) {
+        const value = readInt(input);
+        if (value === null) {
+          showError(DLG.errCount, [input]);
+          return null;
+        }
+        counts.push(value);
+      }
+      if (!Number.isSafeInteger(counts.reduce((sum, n) => sum + n, 0))) {
+        showError(DLG.errSumBig, tInputs);
+        return null;
+      }
+      return counts;
+    };
+    body.addEventListener('input', clearError);
+
     const midRow = document.createElement('div');
     midRow.className = 'dlg-row';
     const splitBtn = makeButton(DLG.split);
     splitBtn.addEventListener('click', () => {
-      const sum = readInt(tInputs[0]) + readInt(tInputs[1]) + readInt(tInputs[2]) + readInt(tInputs[3]);
-      const sp = splitEvenly(Math.min(sum > 0 ? sum : 99, 999));
+      clearError();
+      const counts = readCounts();
+      if (!counts) return;
+      const sp = splitEvenly(counts.reduce((sum, n) => sum + n, 0));
       tInputs.forEach((inp, i) => (inp.value = String(sp[i + 1])));
     });
     midRow.append(splitBtn, err);
@@ -189,34 +271,37 @@ export function showCustomDialog(current: { w: number; h: number; mines: number;
     actions.append(okBtn, cancelBtn);
     body.appendChild(actions);
 
-    const done = (applied: boolean, config?: CustomConfig): void => {
-      closeDialog();
-      resolve({ applied, config });
-    };
-    cancelBtn.addEventListener('click', () => done(false));
+    let result: CustomDialogResult = { applied: false };
+    cancelBtn.addEventListener('click', () => closeDialog());
 
     okBtn.addEventListener('click', () => {
-      const h = readInt(hInput, 16);
-      const w = readInt(wInput, 30);
-      const counts = [0, ...tInputs.map((i) => readInt(i))];
+      clearError();
+      const h = readInt(hInput);
+      const w = readInt(wInput);
+      if (h === null || h < 9 || h > 30) return showError(DLG.errHeight, [hInput]);
+      if (w === null || w < 9 || w > 40) return showError(DLG.errWidth, [wInput]);
+      const counts = readCounts();
+      if (!counts) return;
       const sum = counts[1] + counts[2] + counts[3] + counts[4];
-      if (h < 9 || h > 30) return void (err.textContent = DLG.errHeight);
-      if (w < 9 || w > 40) return void (err.textContent = DLG.errWidth);
-      if (sum < 1) return void (err.textContent = DLG.errSumZero);
-      if (sum > w * h - 9) return void (err.textContent = DLG.errSumBig);
-      done(true, { w, h, typeCount: counts, mines: sum });
+      if (sum < 1) return showError(DLG.errSumZero, tInputs);
+      if (sum > w * h - 9) return showError(DLG.errSumBig, tInputs);
+      result = { applied: true, config: { w, h, typeCount: counts, mines: sum } };
+      closeDialog();
     });
     body.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') okBtn.click();
+      if (e.key === 'Enter' && e.target instanceof HTMLInputElement && !e.isComposing && e.keyCode !== 229) {
+        e.preventDefault();
+        okBtn.click();
+      }
     });
 
-    openDialog(DLG.title, body, () => resolve({ applied: false }));
-    queueMicrotask(() => hInput.focus());
+    openDialog(DLG.title, body, () => resolve(result));
   });
 }
 
-function readInt(input: HTMLInputElement, fallback = 0): number {
-  const digits = input.value.replace(/[^0-9]/g, '');
-  if (!digits) return fallback;
-  return Math.min(parseInt(digits, 10), 100000);
+function readInt(input: HTMLInputElement): number | null {
+  const value = input.value.trim();
+  if (!/^\d+$/.test(value)) return null;
+  const number = Number(value);
+  return Number.isSafeInteger(number) ? number : null;
 }

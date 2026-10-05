@@ -5,7 +5,7 @@ import { Game } from '../src/game/game';
 import { InputController } from '../src/input/input';
 import { makeLayout } from '../src/render/layout';
 import { loadScores } from '../src/app/storage';
-import { closeDialog, showCustomDialog, showScores } from '../src/app/dialogs';
+import { closeDialog, isDialogOpen, showCustomDialog, showScores } from '../src/app/dialogs';
 
 vi.mock('../src/app/dialogs', () => ({
   showScores: vi.fn(),
@@ -92,5 +92,22 @@ describe('score eligibility', () => {
     await app.openCustomDialog();
     win(app);
     expect(loadScores().best).toEqual([0, 12, 0]);
+  });
+});
+
+describe('modal keyboard handling', () => {
+  it('keeps F2 from restarting while a dialog is open', () => {
+    const app = makeApp();
+    const newGame = vi.spyOn(app, 'newGame');
+    (app as unknown as { bindInput(): void }).bindInput();
+    vi.mocked(isDialogOpen).mockReturnValue(true);
+    const blocked = new KeyboardEvent('keydown', { key: 'F2', cancelable: true });
+    window.dispatchEvent(blocked);
+    expect(blocked.defaultPrevented).toBe(true);
+    expect(newGame).not.toHaveBeenCalled();
+
+    vi.mocked(isDialogOpen).mockReturnValue(false);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', cancelable: true }));
+    expect(newGame).toHaveBeenCalledTimes(1);
   });
 });

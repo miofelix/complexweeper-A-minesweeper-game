@@ -40,6 +40,7 @@ export const DLG = {
   cancel: '取消',
   errHeight: '高度要在 9 – 30 之间。',
   errWidth: '宽度要在 9 – 40 之间。',
+  errCount: '雷数要填写非负整数。',
   errSumZero: '四种雷合计至少 1 颗。',
   errSumBig: '合计超过上限（格数 − 9）。',
 };
