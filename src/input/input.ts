@@ -63,6 +63,10 @@ export class InputController {
   get flagMode(): boolean {
     return this.touch_flag_mode;
   }
+  /** 是否有活跃的触屏指针（用于识别触屏点按伴随的兼容性鼠标事件） */
+  get hasActiveTouch(): boolean {
+    return this.touch_id !== null;
+  }
   boardHeld(): boolean {
     return this.r_down || this.m_down || (this.l_down && !this.face_down);
   }
@@ -123,6 +127,12 @@ export class InputController {
     if (e.button === 0) {
       // 左键（含双击第二下）：只压住不翻开
       const on_face = inFace(L, px, py, counterShownFor(g));
+      // 插旗模式：左键点按 = 循环插旗（与触屏一致），人脸重开除外
+      if (this.touch_flag_mode && !on_face) {
+        if (c >= 0) this.doCycleFlag(c);
+        this.h.requestRender();
+        return;
+      }
       this.l_down = true;
       this.face_armed = on_face;
       this.face_down = on_face;
@@ -239,6 +249,9 @@ export class InputController {
       g.open[c] !== 0;
     if (!on_face && dbl) {
       this.chord_cell = c; // 双击按住已开格：预览即将展开的邻格，抬手展开
+      this.press_cell = -1;
+    } else if (this.touch_flag_mode) {
+      // 插旗模式下点按 = 循环插旗，不做翻开预览
       this.press_cell = -1;
     } else if (!on_face && c >= 0 && !g.over && g.open[c] === 0) {
       this.press_cell = c;

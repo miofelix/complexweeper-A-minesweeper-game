@@ -223,6 +223,9 @@ export class App {
   private bindInput(): void {
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     this.canvas.addEventListener('mousedown', (e) => {
+      // 触屏点按伴随的兼容性鼠标事件会绕过 touch 的 pointer 路径直接把格子翻开；
+      // 仅当存在活跃触屏指针时判定为兼容事件并忽略，桌面真实鼠标不受影响。
+      if (this.input.hasActiveTouch) return;
       const [x, y] = this.canvasPos(e);
       this.input.onMouseDown(e, x, y);
       e.preventDefault();
@@ -232,6 +235,7 @@ export class App {
       this.input.onMouseMove(x, y);
     });
     window.addEventListener('mouseup', (e) => {
+      if (this.input.hasActiveTouch) return;
       const [x, y] = this.canvasPos(e);
       this.input.onMouseUp(e, x, y);
     });
