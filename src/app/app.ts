@@ -26,6 +26,8 @@ export class App {
   private face_flash_until = 0;
   private raf_pending = false;
   private last_touch_at = -Infinity;
+  private pen_buttons = 0;
+  private pen_pointer_id: number | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -153,7 +155,7 @@ export class App {
   newGame(): void {
     this.stopTimer();
     this.face_flash_until = 0;
-    this.input.resetGesture();
+    this.resetInput();
     this.game.newGame(this.randomSeed());
     const viewport = this.canvas.parentElement;
     if (viewport?.id === 'board-viewport') {
@@ -176,7 +178,7 @@ export class App {
   }
 
   setZoom(z: number): void {
-    this.input.resetGesture();
+    this.resetInput();
     this.zoom = z;
     this.fitCanvas();
     this.syncToolbar();
@@ -184,7 +186,7 @@ export class App {
   }
 
   async openCustomDialog(): Promise<void> {
-    this.input.resetGesture();
+    this.resetInput();
     this.requestRender();
     const res = await showCustomDialog({
       w: this.game.w,
@@ -204,7 +206,7 @@ export class App {
   }
 
   showScores(): void {
-    this.input.resetGesture();
+    this.resetInput();
     this.requestRender();
     this.scores = mergeScores(this.scores, loadScores());
     showScores(this.scores, false);
@@ -225,23 +227,43 @@ export class App {
     });
   }
   showHelp(): void {
-    this.input.resetGesture();
+    this.resetInput();
     this.requestRender();
     showHelp();
   }
   showAbout(): void {
-    this.input.resetGesture();
+    this.resetInput();
     this.requestRender();
     showAbout();
   }
 
   // ---------------------------------------------------------------- 输入接线
+  private resetInput(): void {
+    this.pen_buttons = 0;
+    this.pen_pointer_id = null;
+    this.input.resetGesture();
+  }
+
   private canvasPos(e: MouseEvent | PointerEvent): [number, number] {
     const r = this.canvas.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
   }
 
   private bindInput(): void {
+    const updatePen = (buttons: number, x: number, y: number): void => {
+      this.input.onMouseMove(x, y);
+      for (const [mask, button] of [[1, 0], [2, 2], [4, 1]]) {
+        if ((buttons & mask) && !(this.pen_buttons & mask)) this.input.onMouseDown({ button } as MouseEvent, x, y);
+      }
+      for (const [mask, button] of [[1, 0], [2, 2], [4, 1]]) {
+        if (!(buttons & mask) && (this.pen_buttons & mask)) this.input.onMouseUp({ button } as MouseEvent, x, y);
+      }
+      this.pen_buttons = buttons;
+    };
+    const cancelGesture = (): void => {
+      this.resetInput();
+      this.requestRender();
+    };
     const fromTouch = (e: MouseEvent): boolean => {
       const capabilities = (e as MouseEvent & { sourceCapabilities?: { firesTouchEvents: boolean } | null }).sourceCapabilities;
       return capabilities ? capabilities.firesTouchEvents : this.input.hasActiveTouch || nowMs() - this.last_touch_at < 800;
@@ -268,32 +290,51 @@ export class App {
     // 触屏（Pointer Events）
     this.canvas.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse') return;
-      this.last_touch_at = nowMs();
       const [x, y] = this.canvasPos(e);
-      this.input.onPointerDown(e, x, y);
-      if (this.input.hasActiveTouch && e.isPrimary) this.canvas.setPointerCapture(e.pointerId);
+      if (e.pointerType === 'pen') {
+        this.pen_pointer_id = e.pointerId;
+        updatePen(e.buttons, x, y);
+        if (e.isPrimary) this.canvas.setPointerCapture(e.pointerId);
+      } else {
+        this.last_touch_at = nowMs();
+        this.input.onPointerDown(e, x, y);
+        if (this.input.hasActiveTouch && e.isPrimary) this.canvas.setPointerCapture(e.pointerId);
+      }
       e.preventDefault();
     });
     this.canvas.addEventListener('pointermove', (e) => {
       if (e.pointerType === 'mouse') return;
       const [x, y] = this.canvasPos(e);
-      this.input.onPointerMove(e, x, y);
+      if (e.pointerType === 'pen') {
+        if (this.pen_pointer_id === e.pointerId) updatePen(e.buttons, x, y);
+      } else this.input.onPointerMove(e, x, y);
     });
     this.canvas.addEventListener('pointerup', (e) => {
       if (e.pointerType === 'mouse') return;
-      this.last_touch_at = nowMs();
       const [x, y] = this.canvasPos(e);
-      this.input.onPointerUp(e, x, y);
+      if (e.pointerType === 'pen') {
+        if (this.pen_pointer_id === e.pointerId) {
+          updatePen(e.buttons, x, y);
+          this.pen_pointer_id = null;
+        }
+      } else {
+        this.last_touch_at = nowMs();
+        this.input.onPointerUp(e, x, y);
+      }
     });
     this.canvas.addEventListener('pointercancel', (e) => {
-      if (e.pointerType !== 'mouse') this.last_touch_at = nowMs();
-      this.input.onPointerCancel(e);
+      if (e.pointerType === 'pen') {
+        if (this.pen_pointer_id === e.pointerId) cancelGesture();
+      } else {
+        if (e.pointerType !== 'mouse') this.last_touch_at = nowMs();
+        this.input.onPointerCancel(e);
+      }
     });
-    this.canvas.addEventListener('lostpointercapture', (e) => this.input.onPointerCancel(e));
-    const cancelGesture = (): void => {
-      this.input.resetGesture();
-      this.requestRender();
-    };
+    this.canvas.addEventListener('lostpointercapture', (e) => {
+      if (e.pointerType === 'pen') {
+        if (this.pen_pointer_id === e.pointerId) cancelGesture();
+      } else this.input.onPointerCancel(e);
+    });
     window.addEventListener('blur', cancelGesture);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) cancelGesture();

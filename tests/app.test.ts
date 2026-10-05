@@ -139,3 +139,89 @@ describe('modal keyboard handling', () => {
     expect(newGame).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('pen controls', () => {
+  function penSetup() {
+    const app = makeApp();
+    const internal = app as unknown as { canvas: HTMLCanvasElement; input: InputController; game: Game; bindInput(): void };
+    internal.canvas.setPointerCapture = vi.fn();
+    internal.bindInput();
+    const layout = makeLayout(2, internal.game);
+    const dispatch = (type: string, button: number, buttons = type === 'pointerdown' ? [1, 4, 2][button] : 0) => {
+      const event = new MouseEvent(type, {
+        button, buttons, clientX: layout.board_x + 16, clientY: layout.board_y + 16,
+        bubbles: true, cancelable: true,
+      });
+      Object.defineProperties(event, {
+        pointerType: { value: 'pen' }, pointerId: { value: 99 }, isPrimary: { value: true },
+      });
+      internal.canvas.dispatchEvent(event);
+    };
+    return { ...internal, app, dispatch };
+  }
+
+  it('uses the pen barrel button to flag without revealing', () => {
+    const { game, dispatch } = penSetup();
+    dispatch('pointerdown', 2);
+    dispatch('pointerup', 2);
+    expect(game.flag[0]).toBe(1);
+    expect(game.started).toBe(false);
+  });
+
+  it('reveals with the tip and honours flag mode', () => {
+    const { game, input, dispatch } = penSetup();
+    input.toggleFlagMode();
+    dispatch('pointerdown', 0);
+    dispatch('pointerup', 0);
+    expect(game.flag[0]).toBe(1);
+    expect(game.started).toBe(false);
+    game.setFlag(0, 0);
+    input.toggleFlagMode();
+    dispatch('pointerdown', 0);
+    dispatch('pointerup', 0);
+    expect(game.started).toBe(true);
+  });
+
+  it('consumes a chord when the pen barrel button changes during tip contact', () => {
+    const { game, input, dispatch } = penSetup();
+    dispatch('pointerdown', 0, 1);
+    expect(input.pressCell).toBe(0);
+    dispatch('pointermove', 2, 3);
+    expect(input.pressCell).toBe(-1);
+    expect(input.chordCell).toBe(0);
+    dispatch('pointermove', 2, 1);
+    dispatch('pointerup', 0, 0);
+    expect(game.started).toBe(false);
+    expect(game.flagsTotal()).toBe(0);
+    expect(input.boardHeld()).toBe(false);
+    dispatch('pointerdown', 0, 1);
+    dispatch('pointerup', 0, 0);
+    expect(game.started).toBe(true);
+  });
+
+  it.each(['pointercancel', 'lostpointercapture'])('cancels a pen press on %s', (type) => {
+    const { game, input, dispatch } = penSetup();
+    dispatch('pointerdown', 0);
+    expect(input.pressCell).toBe(0);
+    dispatch(type, 0);
+    expect(input.pressCell).toBe(-1);
+    dispatch('pointermove', -1, 1);
+    dispatch('pointerup', 0);
+    expect(game.started).toBe(false);
+    dispatch('pointerdown', 0);
+    dispatch('pointerup', 0);
+    expect(game.started).toBe(true);
+  });
+
+  it.each(['restart', 'zoom', 'help'])('does not carry pen button state across %s', (action) => {
+    const { app, game, dispatch } = penSetup();
+    dispatch('pointerdown', 0, 1);
+    if (action === 'restart') app.newGame();
+    if (action === 'zoom') app.setZoom(1);
+    if (action === 'help') app.showHelp();
+    dispatch('pointermove', 2, 3);
+    dispatch('pointerup', 0, 0);
+    expect(game.flagsTotal()).toBe(0);
+    expect(game.started).toBe(false);
+  });
+});

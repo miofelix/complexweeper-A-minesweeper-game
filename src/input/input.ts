@@ -131,7 +131,13 @@ export class InputController {
   // ---------------------------------------------------------------- 鼠标
   onMouseDown(e: MouseEvent, px: number, py: number): void {
     if (!this.l_down && !this.r_down && !this.m_down) this.mouse_chord_consumed = false;
-    if (this.mouse_chord_consumed) return;
+    if (this.mouse_chord_consumed) {
+      // The remaining physical buttons must all be released before a new gesture.
+      if (e.button === 0) this.l_down = true;
+      if (e.button === 2) this.r_down = true;
+      if (e.button === 1) this.m_down = true;
+      return;
+    }
     const L = this.h.getLayout();
     const g = this.h.game;
     const c = cellAt(L, g, px, py);
@@ -147,7 +153,7 @@ export class InputController {
       this.l_down = true;
       this.face_armed = on_face;
       this.face_down = on_face;
-      if (this.r_down) {
+      if (this.r_down || this.m_down) {
         this.chord_cell = c;
         this.press_cell = -1;
       } else {
@@ -156,7 +162,7 @@ export class InputController {
       this.h.requestRender();
     } else if (e.button === 2) {
       this.r_down = true;
-      if (this.l_down) {
+      if (this.l_down || this.m_down) {
         this.chord_cell = c;
         this.press_cell = -1;
         this.h.requestRender();
@@ -201,13 +207,29 @@ export class InputController {
   }
 
   onMouseUp(e: MouseEvent, px: number, py: number): void {
+    const button_held = e.button === 0 ? this.l_down : e.button === 2 ? this.r_down : e.button === 1 && this.m_down;
+    if (!button_held) return;
     const L = this.h.getLayout();
     const g = this.h.game;
     const was_chord = this.m_down || (this.l_down && this.r_down) || this.chord_cell >= 0;
-    if (was_chord) this.mouse_chord_consumed = true;
+    if (was_chord || this.mouse_chord_consumed) {
+      const chord = this.chord_cell;
+      const expand = !this.mouse_chord_consumed && chord >= 0 && cellAt(L, g, px, py) === chord;
+      if (e.button === 0) this.l_down = false;
+      if (e.button === 2) this.r_down = false;
+      if (e.button === 1) this.m_down = false;
+      this.mouse_chord_consumed = true;
+      this.press_cell = -1;
+      this.chord_cell = -1;
+      this.face_down = false;
+      this.face_armed = false;
+      if (expand) this.doExpand(chord);
+      if (!this.l_down && !this.r_down && !this.m_down) this.mouse_chord_consumed = false;
+      this.h.requestRender();
+      return;
+    }
     if (e.button === 0) {
       const held = this.press_cell;
-      const chord = this.chord_cell;
       const was_face = this.face_armed;
       this.l_down = false;
       this.press_cell = -1;
@@ -219,31 +241,12 @@ export class InputController {
         this.h.onAction({ flashFace: false, startTimer: false, faceRestart: true });
         return;
       }
-      if (chord >= 0) {
-        if (cellAt(L, g, px, py) === chord) this.doExpand(chord);
-        this.h.requestRender();
-        return;
-      }
       if (held >= 0 && cellAt(L, g, px, py) === held && !g.over && g.flag[held] === 0) {
         this.doReveal(held);
       }
       this.h.requestRender();
     } else if (e.button === 2) {
       this.r_down = false;
-      const chord = this.chord_cell;
-      if (chord >= 0) {
-        this.chord_cell = -1;
-        this.press_cell = -1;
-        this.face_down = false;
-        if (cellAt(L, g, px, py) === chord) this.doExpand(chord);
-        this.h.requestRender();
-      }
-    } else if (e.button === 1) {
-      const chord = this.chord_cell;
-      this.m_down = false;
-      this.chord_cell = -1;
-      this.face_down = false;
-      if (chord >= 0 && cellAt(L, g, px, py) === chord) this.doExpand(chord);
       this.h.requestRender();
     }
     if (!this.l_down && !this.r_down && !this.m_down) this.mouse_chord_consumed = false;
@@ -252,6 +255,12 @@ export class InputController {
   // ---------------------------------------------------------------- 触屏（Pointer Events）
   onPointerDown(e: PointerEvent, px: number, py: number): void {
     if (e.pointerType === 'mouse') return; // 鼠标走 onMouseDown
+    if (e.isPrimary === false) {
+      // A secondary contact stays secondary until the whole touch cluster ends.
+      this.resetGesture();
+      this.h.requestRender();
+      return;
+    }
     if (this.touch_id !== null) {
       if (this.touch_id !== e.pointerId) {
         this.resetGesture();
@@ -313,29 +322,7 @@ export class InputController {
       this.h.requestRender();
       return;
     }
-    if (this.touch_moved) return;
-    if (this.chord_cell >= 0) {
-      const L = this.h.getLayout();
-      const g = this.h.game;
-      const c = cellAt(L, g, px, py);
-      const next = c >= 0 ? c : -1;
-      if (next !== this.chord_cell) {
-        this.chord_cell = next;
-        this.h.requestRender();
-      }
-      return;
-    }
-    // 按下预览跟着手指走
-    if (this.press_cell >= 0) {
-      const L = this.h.getLayout();
-      const g = this.h.game;
-      const c = cellAt(L, g, px, py);
-      const next = c >= 0 && g.open[c] === 0 ? c : -1;
-      if (next !== this.press_cell) {
-        this.press_cell = next;
-        this.h.requestRender();
-      }
-    }
+    // Small finger jitter keeps the original target and long-press preview aligned.
   }
 
   onPointerUp(e: PointerEvent, px: number, py: number): void {
@@ -371,8 +358,10 @@ export class InputController {
       this.h.onAction({ flashFace: false, startTimer: false, faceRestart: true });
       return;
     }
-    const c = cellAt(L, g, px, py);
-    if (c < 0 || this.touch_moved) {
+    const c = cellAt(L, g, this.touch_start_x, this.touch_start_y);
+    if (c < 0 || cellAt(L, g, px, py) !== c) {
+      this.last_tap_t = 0;
+      this.last_tap_cell = -1;
       this.h.requestRender();
       return;
     }
