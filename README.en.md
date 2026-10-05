@@ -8,6 +8,12 @@ Reveal every non-mine cell to win.
 
 **A pure static web app**: Vite + TypeScript + Canvas 2D, no runtime dependencies, no backend. The build output can be hosted on any static platform and works offline as a PWA.
 
+## Origin & Acknowledgements
+
+This repository is a modified version (fork) of [Yueqing-Chen/complexweeper-A-minesweeper-game](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game): the original is a Zig + Win32 desktop application developed by 青月晓 (Yueqing Chen), which this repository rebuilds as a web app. The game rules and image assets are carried over from the original work.
+
+Many thanks to the original author 青月晓 for designing and open-sourcing this unique complex-number minesweeper, and to contributors such as [VoidForge](https://github.com/VoidForge) for their fixes and improvements to the original repository. The original code is licensed under GPL-3.0, and the modifications in this repository are published under the same license (see `LICENSE`).
+
 ## Rules
 
 There are four mine types: positive-real, negative-real, positive-imaginary, and negative-imaginary — that is, +1, −1, +i, and −i.
