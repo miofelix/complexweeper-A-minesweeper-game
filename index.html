@@ -18,6 +18,9 @@
       * {
         box-sizing: border-box;
       }
+      [hidden] {
+        display: none !important;
+      }
       html,
       body {
         margin: 0;
@@ -150,7 +153,8 @@
         width: 64px;
         flex: none;
       }
-      .dlg-row input {
+      .dlg-row input,
+      .dlg-row select {
         width: 70px;
         font-family: inherit;
         font-size: 16px;
@@ -159,6 +163,10 @@
         padding: 2px 4px;
         border: 2px solid;
         border-color: var(--shadow) var(--hilight) var(--hilight) var(--shadow);
+      }
+      .dlg-row select {
+        width: auto;
+        max-width: 100%;
       }
       .dlg-hint {
         color: #606060;
@@ -214,7 +222,8 @@
       @media (max-width: 640px), (pointer: coarse) {
         button.tool,
         .dlg-btn,
-        .dlg-row input {
+        .dlg-row input,
+        .dlg-row select {
           min-height: 44px;
         }
         button.tool,

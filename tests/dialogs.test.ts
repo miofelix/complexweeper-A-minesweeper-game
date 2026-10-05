@@ -7,11 +7,11 @@ import { DLG } from '../src/app/strings';
 const current = { w: 9, h: 9, mines: 10, typeCount: [0, 3, 3, 2, 2] };
 
 function fields(): HTMLInputElement[] {
-  return Array.from(document.querySelectorAll<HTMLInputElement>('.dlg-box input'));
+  return Array.from(document.querySelectorAll<HTMLInputElement>('.dlg-box input:not(:disabled)'));
 }
 
 function buttons(): HTMLButtonElement[] {
-  return Array.from(document.querySelectorAll<HTMLButtonElement>('.dlg-box button'));
+  return Array.from(document.querySelectorAll<HTMLButtonElement>('.dlg-box button:not(:disabled)'));
 }
 
 function press(element: HTMLElement, key: string, options: KeyboardEventInit = {}): KeyboardEvent {
@@ -104,6 +104,50 @@ describe('modal dialogs', () => {
 });
 
 describe('custom board validation', () => {
+  it('preserves a random distribution when reopening and applying custom settings', async () => {
+    const result = showCustomDialog({ w: 12, h: 15, mines: 24, typeCount: [0, 0, 0, 0, 0] });
+    expect(document.querySelector<HTMLSelectElement>('#dlg-custom-mode')!.value).toBe('random');
+    const total = document.querySelector<HTMLInputElement>('#dlg-custom-total')!;
+    expect(total.disabled).toBe(false);
+    total.value = '36';
+    press(total, 'Enter');
+    expect(await result).toEqual({ applied: true, config: { w: 12, h: 15, mines: 36, typeCount: [0, 0, 0, 0, 0] } });
+  });
+
+  it.each(['', '0', '-1', '1.5', '73'])('rejects an invalid random mine total %j', async (value) => {
+    const result = showCustomDialog({ ...current, typeCount: [0, 0, 0, 0, 0] });
+    const total = document.querySelector<HTMLInputElement>('#dlg-custom-total')!;
+    total.value = value;
+    buttons()[0].click();
+    expect(isDialogOpen()).toBe(true);
+    expect(total.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(total);
+    closeDialog();
+    expect(await result).toEqual({ applied: false });
+  });
+
+  it('switches distributions without discarding edits and submits only the active fields', async () => {
+    const result = showCustomDialog(current);
+    const mode = document.querySelector<HTMLSelectElement>('#dlg-custom-mode')!;
+    const firstCount = document.querySelector<HTMLInputElement>('#dlg-custom-type-1')!;
+    firstCount.value = '6';
+    mode.value = 'random';
+    mode.dispatchEvent(new Event('change'));
+    expect(firstCount.disabled).toBe(true);
+    expect(firstCount.closest<HTMLElement>('.dlg-grid')!.hidden).toBe(true);
+    const total = document.querySelector<HTMLInputElement>('#dlg-custom-total')!;
+    total.value = '18';
+    mode.value = 'exact';
+    mode.dispatchEvent(new Event('change'));
+    expect(firstCount.value).toBe('6');
+    expect(total.disabled).toBe(true);
+    firstCount.value = 'invalid';
+    mode.value = 'random';
+    mode.dispatchEvent(new Event('change'));
+    expect(total.value).toBe('18');
+    buttons()[0].click();
+    expect(await result).toEqual({ applied: true, config: { w: 9, h: 9, mines: 18, typeCount: [0, 0, 0, 0, 0] } });
+  });
   it.each(['', '-9', '9.5', '9abc', '1e1', 'Infinity', '9007199254740993'])(
     'rejects malformed height %j instead of changing its meaning', async (value) => {
       const result = showCustomDialog(current);

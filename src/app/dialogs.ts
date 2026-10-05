@@ -9,7 +9,7 @@ export interface CustomConfig {
   h: number;
   /** 四类精确配比（下标 1..4），全 0 = 类型随机撒 */
   typeCount: number[];
-  /** 总雷数（= typeCount 合计） */
+  /** Total mines; typeCount sums to this only in exact mode. */
   mines: number;
 }
 
@@ -205,12 +205,31 @@ export function showCustomDialog(current: { w: number; h: number; mines: number;
     const hInput = mkRow('dlg-custom-height', DLG.height, DLG.heightHint, current.h);
     const wInput = mkRow('dlg-custom-width', DLG.width, DLG.widthHint, current.w);
 
+    const hasExactMix = current.typeCount.some((v, i) => i > 0 && v > 0);
+    const modeRow = document.createElement('div');
+    modeRow.className = 'dlg-row';
+    const modeLabel = document.createElement('label');
+    modeLabel.htmlFor = 'dlg-custom-mode';
+    modeLabel.textContent = DLG.distribution;
+    const mode = document.createElement('select');
+    mode.id = modeLabel.htmlFor;
+    for (const [value, label] of [['random', DLG.randomTypes], ['exact', DLG.exactTypes]]) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      mode.appendChild(option);
+    }
+    mode.value = hasExactMix ? 'exact' : 'random';
+    modeRow.append(modeLabel, mode);
+    body.appendChild(modeRow);
+
+    const totalInput = mkRow('dlg-custom-total', DLG.total, DLG.totalHint, current.mines);
+    const totalRow = totalInput.parentElement!;
+
     // 四类雷配比（两列排布）
     const grid = document.createElement('div');
     grid.className = 'dlg-grid';
-    const tc = current.typeCount.some((v, i) => i > 0 && v > 0)
-      ? current.typeCount
-      : splitEvenly(current.mines);
+    const tc = hasExactMix ? current.typeCount : splitEvenly(current.mines);
     const tInputs: HTMLInputElement[] = [];
     DLG.names.forEach((name, k) => {
       const cell = document.createElement('div');
@@ -264,6 +283,20 @@ export function showCustomDialog(current: { w: number; h: number; mines: number;
     midRow.append(splitBtn, err);
     body.appendChild(midRow);
 
+    // Hidden fields are disabled so they neither trap focus nor submit values.
+    const updateMode = (): void => {
+      const exact = mode.value === 'exact';
+      totalRow.hidden = exact;
+      totalInput.disabled = exact;
+      grid.hidden = !exact;
+      tInputs.forEach((input) => { input.disabled = !exact; });
+      splitBtn.hidden = !exact;
+      splitBtn.disabled = !exact;
+      clearError();
+    };
+    mode.addEventListener('change', updateMode);
+    updateMode();
+
     const actions = document.createElement('div');
     actions.className = 'dlg-actions';
     const okBtn = makeButton(DLG.ok, true);
@@ -280,6 +313,14 @@ export function showCustomDialog(current: { w: number; h: number; mines: number;
       const w = readInt(wInput);
       if (h === null || h < 9 || h > 30) return showError(DLG.errHeight, [hInput]);
       if (w === null || w < 9 || w > 40) return showError(DLG.errWidth, [wInput]);
+      if (mode.value === 'random') {
+        const total = readInt(totalInput);
+        if (total === null || total < 1) return showError(DLG.errTotal, [totalInput]);
+        if (total > w * h - 9) return showError(DLG.errSumBig, [totalInput]);
+        result = { applied: true, config: { w, h, mines: total, typeCount: [0, 0, 0, 0, 0] } };
+        closeDialog();
+        return;
+      }
       const counts = readCounts();
       if (!counts) return;
       const sum = counts[1] + counts[2] + counts[3] + counts[4];
