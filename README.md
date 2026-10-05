@@ -8,6 +8,8 @@
 
 **纯静态 Web 应用**：Vite + TypeScript + Canvas 2D，无运行时依赖、无后端，构建产物可直接托管到任意静态平台，支持 PWA 离线游玩。
 
+**在线试玩**：https://miofelix.github.io/complexweeper-A-minesweeper-game/
+
 ## 出处与致谢
 
 本仓库是 [Yueqing-Chen/complexweeper-A-minesweeper-game](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game) 的修改版本（fork）：原作为青月晓开发的 Zig + Win32 桌面程序，本仓库在其基础上重构为 Web 应用，游戏规则与图像素材均沿用原作。

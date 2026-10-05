@@ -8,6 +8,8 @@ Reveal every non-mine cell to win.
 
 **A pure static web app**: Vite + TypeScript + Canvas 2D, no runtime dependencies, no backend. The build output can be hosted on any static platform and works offline as a PWA.
 
+**Play online**: https://miofelix.github.io/complexweeper-A-minesweeper-game/
+
 ## Origin & Acknowledgements
 
 This repository is a modified version (fork) of [Yueqing-Chen/complexweeper-A-minesweeper-game](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game): the original is a Zig + Win32 desktop application developed by 青月晓 (Yueqing Chen), which this repository rebuilds as a web app. The game rules and image assets are carried over from the original work.
