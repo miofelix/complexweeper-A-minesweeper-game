@@ -44,12 +44,16 @@ Remember: you win by revealing all non-mine cells, not by flagging every mine co
 | Restart | Click the face button | Same |
 | New game | F2 | "New game" button |
 
+Flag mode also makes left clicks cycle flags. With a pen, the tip reveals and the barrel button cycles flags. Large boards scroll horizontally; on touch screens, drag to pan without revealing a cell.
+
 ## Difficulty
 
 - Beginner: 9×9, 10 mines
 - Intermediate: 16×16, 40 mines
 - Expert: 30×16, 99 mines
 - Custom: width 9–40, height 9–30; set either a total mine count (types dealt at random) or an exact per-type mix
+
+The custom dialog's distribution selector switches between random types and an exact mix. Changing the mode keeps your entries in both modes.
 
 Best times for the three standard presets are stored in the browser's `localStorage`; custom boards are not recorded.
 
