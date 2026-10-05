@@ -26,6 +26,10 @@ export const ABOUT_TEXT = `${APP_TITLE} ${APP_VERSION}
 原仓库：github.com/Yueqing-Chen/complexweeper-A-minesweeper-game
 感谢原作者及各位贡献者，原作与本修改版均按 GPL-3.0 发布。
 
+Web 移植与维护：miofelix
+将原桌面程序重构为浏览器版本，完善桌面与手机操作、自定义配置、最高分纪录及 PWA 离线支持，并持续修复交互问题。
+Web 仓库：github.com/miofelix/complexweeper-web
+
 图像素材来源：Microsoft（扫雷原始图像素材）；青月晓（新增图像素材）。
 Copyright © 2026 青月晓
 本程序为免费软件

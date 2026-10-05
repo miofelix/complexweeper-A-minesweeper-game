@@ -59,7 +59,10 @@
       #toolbar .group:last-child {
         border-right: none;
       }
-      button.tool {
+      .tool {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         font: 13px/1 'Microsoft YaHei UI', 'PingFang SC', sans-serif;
         padding: 5px 10px;
         background: var(--btnface);
@@ -67,12 +70,15 @@
         border-color: var(--hilight) var(--shadow) var(--shadow) var(--hilight);
         cursor: pointer;
         white-space: nowrap;
+        color: inherit;
+        text-decoration: none;
       }
-      button.tool:active,
+      .tool:active,
       button.tool.active {
         border-color: var(--shadow) var(--hilight) var(--hilight) var(--shadow);
       }
       button:focus-visible,
+      a.tool:focus-visible,
       #board-viewport:focus-visible {
         outline: 2px solid #000080;
         outline-offset: 2px;
@@ -220,13 +226,13 @@
         }
       }
       @media (max-width: 640px), (pointer: coarse) {
-        button.tool,
+        .tool,
         .dlg-btn,
         .dlg-row input,
         .dlg-row select {
           min-height: 44px;
         }
-        button.tool,
+        .tool,
         .dlg-btn {
           padding: 10px;
         }
@@ -256,6 +262,7 @@
         <button class="tool" id="btn-scores">最高分纪录</button>
         <button class="tool" id="btn-help">玩法</button>
         <button class="tool" id="btn-about">关于</button>
+        <a class="tool" id="link-github" href="https://github.com/miofelix/complexweeper-web" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库（在新标签页打开）">GitHub ↗</a>
       </div>
     </div>
     <div id="board-viewport" role="region" aria-label="雷区" tabindex="0">
