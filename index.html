@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="description" content="复扫雷 Complexweeper — 扫雷，但雷是复数" />
+    <meta name="theme-color" content="#C0C0C0" />
+    <link rel="icon" type="image/png" href="assets/icon-32.png" />
+    <link rel="apple-touch-icon" href="assets/icon-180.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <title>复扫雷 Complexweeper</title>
+    <style>
+      :root {
+        --btnface: #c0c0c0;
+        --hilight: #dfdfdf;
+        --shadow: #808080;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--btnface);
+        font-family: 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        padding: 12px 8px 32px;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      #toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        justify-content: center;
+        max-width: 720px;
+        margin-bottom: 12px;
+      }
+      #toolbar .group {
+        display: flex;
+        gap: 4px;
+        padding: 0 6px;
+        border-left: 1px solid var(--shadow);
+        border-right: 1px solid var(--hilight);
+      }
+      #toolbar .group:first-child {
+        border-left: none;
+      }
+      #toolbar .group:last-child {
+        border-right: none;
+      }
+      button.tool {
+        font: 13px/1 'Microsoft YaHei UI', 'PingFang SC', sans-serif;
+        padding: 5px 10px;
+        background: var(--btnface);
+        border: 2px solid;
+        border-color: var(--hilight) var(--shadow) var(--shadow) var(--hilight);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      button.tool:active,
+      button.tool.active {
+        border-color: var(--shadow) var(--hilight) var(--hilight) var(--shadow);
+      }
+      #board {
+        display: block;
+        touch-action: none;
+        image-rendering: pixelated;
+      }
+      #fatal {
+        color: #a00;
+        margin-top: 16px;
+        font-size: 14px;
+        white-space: pre-wrap;
+      }
+      /* ---- 对话框 ---- */
+      .dlg-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+      .dlg-box {
+        background: #fff;
+        border: 1px solid #404040;
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+        min-width: 300px;
+        max-width: min(92vw, 420px);
+      }
+      .dlg-title {
+        background: #000080;
+        color: #fff;
+        font-size: 13px;
+        font-weight: bold;
+        padding: 4px 8px;
+      }
+      .dlg-body {
+        padding: 14px 16px;
+        font-size: 13px;
+      }
+      .dlg-text {
+        white-space: pre-wrap;
+        line-height: 1.7;
+        margin-bottom: 14px;
+      }
+      .dlg-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .dlg-row label {
+        width: 64px;
+        flex: none;
+      }
+      .dlg-row input {
+        width: 70px;
+        font: 13px/1.4 inherit;
+        padding: 2px 4px;
+        border: 2px solid;
+        border-color: var(--shadow) var(--hilight) var(--hilight) var(--shadow);
+      }
+      .dlg-hint {
+        color: #606060;
+      }
+      .dlg-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 18px;
+        margin: 4px 0 6px;
+      }
+      .dlg-error {
+        color: #a00;
+        min-height: 18px;
+        font-size: 12px;
+      }
+      .dlg-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 12px;
+      }
+      .dlg-btn {
+        min-width: 88px;
+        padding: 5px 12px;
+        font: 13px/1.2 inherit;
+        background: var(--btnface);
+        border: 2px solid;
+        border-color: var(--hilight) var(--shadow) var(--shadow) var(--hilight);
+        cursor: pointer;
+      }
+      .dlg-btn:active {
+        border-color: var(--shadow) var(--hilight) var(--hilight) var(--shadow);
+      }
+      @media (max-width: 640px) {
+        #toolbar .group {
+          border: none;
+          padding: 0 2px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toolbar">
+      <div class="group">
+        <button class="tool" id="btn-new" title="F2">开局</button>
+      </div>
+      <div class="group">
+        <button class="tool" id="btn-beginner">初级</button>
+        <button class="tool" id="btn-intermediate">中级</button>
+        <button class="tool" id="btn-expert">高级</button>
+        <button class="tool" id="btn-custom">自定义…</button>
+      </div>
+      <div class="group">
+        <button class="tool" id="btn-zoom-1">100%</button>
+        <button class="tool" id="btn-zoom-2">200%</button>
+        <button class="tool" id="btn-zoom-3">300%</button>
+      </div>
+      <div class="group">
+        <button class="tool" id="btn-flag-mode" title="触屏：切换点按为插旗">🚩 插旗模式</button>
+      </div>
+      <div class="group">
+        <button class="tool" id="btn-scores">最高分纪录</button>
+        <button class="tool" id="btn-help">玩法</button>
+        <button class="tool" id="btn-about">关于</button>
+      </div>
+    </div>
+    <canvas id="board"></canvas>
+    <div id="fatal"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

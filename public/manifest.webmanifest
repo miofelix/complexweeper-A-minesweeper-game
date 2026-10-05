@@ -1,0 +1,14 @@
+{
+  "name": "复扫雷 Complexweeper",
+  "short_name": "复扫雷",
+  "description": "扫雷，但雷是复数：±1、±i 四种雷，数字是周围雷之和的模长。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#C0C0C0",
+  "theme_color": "#C0C0C0",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
