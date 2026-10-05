@@ -29,11 +29,10 @@ export function pow10i(n: number): number {
   return r;
 }
 
-/** 数值区固定几格：负数要占掉一格画负号，超出范围才再加一格。null 按 base 画空格子 */
+/** Base LED cells, expanding for values outside the standard range. */
 export function valueDigits(base: number, v: number | null): number {
   if (v === null) return base;
-  if (v >= 0) return v <= pow10i(base) - 1 ? base : base + 1;
-  return v >= -(pow10i(base - 1) - 1) ? base : base + 1;
+  return Math.max(base, String(Math.abs(v)).length + (v < 0 ? 1 : 0));
 }
 
 /** 数值区占几格（实雷/计时器四格、虚雷三格） */
@@ -60,9 +59,9 @@ export const FACE_SIZE = 24;
 /** 贴图里的脸偏右下半个像素，整体往左上挪这么多屏幕像素 */
 export const FACE_NUDGE = 2;
 
-/** 表头最小宽度：左侧一列计雷器 + 人脸 + 计时 + 留白（计雷器按常态四格算） */
-export function headerContentWidth(z: number): number {
-  const col = counterWidth(z, 4);
+/** Reserve enough room for a signed counter on the largest supported board. */
+export function headerContentWidth(z: number, maxCount = 81): number {
+  const col = counterWidth(z, panelCells(true, -maxCount));
   return 4 * z + col + 8 * z + FACE_SIZE * z + 8 * z + timerWidth(z) + 4 * z;
 }
 
@@ -78,7 +77,7 @@ export function makeLayout(z: number, board: BoardLike): Layout {
   const box = 3 * z;
   const cell = 16 * z;
   const board_w = board.w * cell + 2 * box;
-  const hw = headerContentWidth(z);
+  const hw = headerContentWidth(z, board.w * board.h);
   const inner_w = Math.max(board_w, hw);
   const client_w = inner_w + 2 * (frame + pad);
   // 表头里四个计雷器竖着排：上下边框 2z×2 + 内边距 3z×2 + 四行 26z + 三个行距 2z

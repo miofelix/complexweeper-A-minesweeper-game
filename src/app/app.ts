@@ -25,6 +25,7 @@ export class App {
   private timer_id: number | null = null;
   private face_flash_until = 0;
   private raf_pending = false;
+  private last_touch_at = -Infinity;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -45,6 +46,7 @@ export class App {
     });
     this.bindInput();
     this.bindToolbar();
+    this.syncToolbar();
     this.game.newGame(this.randomSeed());
     this.fitCanvas();
     this.requestRender();
@@ -152,6 +154,11 @@ export class App {
     this.face_flash_until = 0;
     this.input.resetGesture();
     this.game.newGame(this.randomSeed());
+    const viewport = this.canvas.parentElement;
+    if (viewport?.id === 'board-viewport') {
+      viewport.scrollLeft = 0;
+      viewport.scrollTop = 0;
+    }
     this.requestRender();
   }
 
@@ -164,11 +171,14 @@ export class App {
     this.game.type_count.fill(0);
     this.fitCanvas();
     this.newGame();
+    this.syncToolbar();
   }
 
   setZoom(z: number): void {
+    this.input.resetGesture();
     this.zoom = z;
     this.fitCanvas();
+    this.syncToolbar();
     this.requestRender();
   }
 
@@ -187,6 +197,7 @@ export class App {
     this.game.type_count.set(res.config.typeCount);
     this.fitCanvas();
     this.newGame();
+    this.syncToolbar();
   }
 
   showScores(): void {
@@ -203,6 +214,7 @@ export class App {
       over: this.game.over,
       win: this.game.win,
       opened: this.game.openedCount(),
+      flags: this.game.flagsTotal(),
       typeTotal: Array.from(this.game.type_total),
     });
   }
@@ -220,21 +232,25 @@ export class App {
   }
 
   private bindInput(): void {
+    const fromTouch = (e: MouseEvent): boolean => {
+      const capabilities = (e as MouseEvent & { sourceCapabilities?: { firesTouchEvents: boolean } | null }).sourceCapabilities;
+      return capabilities ? capabilities.firesTouchEvents : this.input.hasActiveTouch || nowMs() - this.last_touch_at < 800;
+    };
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     this.canvas.addEventListener('mousedown', (e) => {
-      // 触屏点按伴随的兼容性鼠标事件会绕过 touch 的 pointer 路径直接把格子翻开；
-      // 仅当存在活跃触屏指针时判定为兼容事件并忽略，桌面真实鼠标不受影响。
-      if (this.input.hasActiveTouch) return;
+      // Compatibility mouse events can arrive after pointerup has cleared the touch.
+      if (fromTouch(e)) return;
       const [x, y] = this.canvasPos(e);
       this.input.onMouseDown(e, x, y);
       e.preventDefault();
     });
     window.addEventListener('mousemove', (e) => {
+      if (fromTouch(e)) return;
       const [x, y] = this.canvasPos(e);
       this.input.onMouseMove(x, y);
     });
     window.addEventListener('mouseup', (e) => {
-      if (this.input.hasActiveTouch) return;
+      if (fromTouch(e)) return;
       const [x, y] = this.canvasPos(e);
       this.input.onMouseUp(e, x, y);
     });
@@ -242,23 +258,36 @@ export class App {
     // 触屏（Pointer Events）
     this.canvas.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse') return;
+      this.last_touch_at = nowMs();
       const [x, y] = this.canvasPos(e);
       this.input.onPointerDown(e, x, y);
+      if (this.input.hasActiveTouch && e.isPrimary) this.canvas.setPointerCapture(e.pointerId);
       e.preventDefault();
     });
     this.canvas.addEventListener('pointermove', (e) => {
       if (e.pointerType === 'mouse') return;
       const [x, y] = this.canvasPos(e);
       this.input.onPointerMove(e, x, y);
-      e.preventDefault();
     });
     this.canvas.addEventListener('pointerup', (e) => {
       if (e.pointerType === 'mouse') return;
+      this.last_touch_at = nowMs();
       const [x, y] = this.canvasPos(e);
       this.input.onPointerUp(e, x, y);
-      e.preventDefault();
     });
-    this.canvas.addEventListener('pointercancel', (e) => this.input.onPointerCancel(e));
+    this.canvas.addEventListener('pointercancel', (e) => {
+      if (e.pointerType !== 'mouse') this.last_touch_at = nowMs();
+      this.input.onPointerCancel(e);
+    });
+    this.canvas.addEventListener('lostpointercapture', (e) => this.input.onPointerCancel(e));
+    const cancelGesture = (): void => {
+      this.input.resetGesture();
+      this.requestRender();
+    };
+    window.addEventListener('blur', cancelGesture);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) cancelGesture();
+    });
     // F2 开局
     window.addEventListener('keydown', (e) => {
       if (e.key === 'F2') {
@@ -285,8 +314,25 @@ export class App {
     on('btn-zoom-3', () => this.setZoom(3));
     on('btn-flag-mode', () => {
       this.input.toggleFlagMode();
-      document.getElementById('btn-flag-mode')?.classList.toggle('active', this.input.flagMode);
+      const button = document.getElementById('btn-flag-mode');
+      button?.classList.toggle('active', this.input.flagMode);
+      button?.setAttribute('aria-pressed', String(this.input.flagMode));
     });
+    document.getElementById('btn-flag-mode')?.setAttribute('aria-pressed', String(this.input.flagMode));
+  }
+
+  private syncToolbar(): void {
+    ['beginner', 'intermediate', 'expert', 'custom'].forEach((name, i) => {
+      const selected = i === 3 ? this.selected_preset < 0 : this.selected_preset === i;
+      const button = document.getElementById(`btn-${name}`);
+      button?.classList.toggle('active', selected);
+      button?.setAttribute('aria-pressed', String(selected));
+    });
+    for (const zoom of [1, 2, 3]) {
+      const button = document.getElementById(`btn-zoom-${zoom}`);
+      button?.classList.toggle('active', this.zoom === zoom);
+      button?.setAttribute('aria-pressed', String(this.zoom === zoom));
+    }
   }
 }
 

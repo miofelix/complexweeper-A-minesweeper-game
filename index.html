@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="复扫雷 Complexweeper — 扫雷，但雷是复数" />
     <meta name="theme-color" content="#C0C0C0" />
     <link rel="icon" type="image/png" href="assets/icon-32.png" />
@@ -30,7 +30,8 @@
         flex-direction: column;
         align-items: center;
         min-height: 100vh;
-        padding: 12px 8px 32px;
+        min-height: 100dvh;
+        padding: 12px max(8px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
         -webkit-user-select: none;
         user-select: none;
       }
@@ -68,10 +69,21 @@
       button.tool.active {
         border-color: var(--shadow) var(--hilight) var(--hilight) var(--shadow);
       }
+      button:focus-visible,
+      #board-viewport:focus-visible {
+        outline: 2px solid #000080;
+        outline-offset: 2px;
+      }
+      #board-viewport {
+        width: fit-content;
+        max-width: 100%;
+        overflow: auto;
+      }
       #board {
         display: block;
-        touch-action: none;
+        touch-action: pan-x pan-y pinch-zoom;
         image-rendering: pixelated;
+        -webkit-touch-callout: none;
       }
       #fatal {
         color: #a00;
@@ -167,6 +179,12 @@
           padding: 0 2px;
         }
       }
+      @media (max-width: 640px), (pointer: coarse) {
+        button.tool {
+          min-height: 44px;
+          padding: 10px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -194,7 +212,9 @@
         <button class="tool" id="btn-about">关于</button>
       </div>
     </div>
-    <canvas id="board"></canvas>
+    <div id="board-viewport" role="region" aria-label="雷区" tabindex="0">
+      <canvas id="board" aria-label="复扫雷雷区"></canvas>
+    </div>
     <div id="fatal"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

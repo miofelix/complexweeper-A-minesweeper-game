@@ -4,6 +4,8 @@ import { Game } from '../src/game/game';
 import {
   cellAt,
   counterWidth,
+  countersWidth,
+  countersX,
   faceLeft,
   faceTop,
   FACE_SIZE,
@@ -44,6 +46,8 @@ describe('LED 格数', () => {
     expect(valueDigits(4, -1000)).toBe(5);
     expect(valueDigits(3, -99)).toBe(3);
     expect(valueDigits(3, -100)).toBe(4);
+    expect(valueDigits(3, -1000)).toBe(5);
+    expect(panelCells(true, -1200)).toBe(6);
   });
   it('未开局按 base 画空格子', () => {
     expect(valueDigits(4, null)).toBe(4);
@@ -80,9 +84,25 @@ describe('布局', () => {
     const fy = faceTop(L);
     const size = FACE_SIZE * 2;
     expect(fx).toBeGreaterThanOrEqual(L.header_x - FACE_NUDGE);
+    expect(fx).toBeGreaterThanOrEqual(countersX(L) + countersWidth(L, shown));
     expect(fx + size).toBeLessThanOrEqual(timerX(L) - 6 * 2 + 1);
     expect(fy).toBeGreaterThanOrEqual(L.header_y - FACE_NUDGE);
     expect(fy + size).toBeLessThanOrEqual(L.header_y + L.header_h);
+  });
+  it('keeps the counters, face, and timer separate at every legal counter magnitude', () => {
+    for (const z of [1, 2, 3]) {
+      for (const h of [9, 16, 30]) {
+        const L = makeLayout(z, { w: 9, h });
+        for (const value of [null, -99, -100, -999, -1000, -1200, 1200]) {
+          if (value !== null && Math.abs(value) > 9 * h) continue;
+          const shown = () => value;
+          const face = faceLeft(L, shown);
+          expect(face).toBeGreaterThanOrEqual(countersX(L) + countersWidth(L, shown));
+          expect(face + FACE_SIZE * z).toBeLessThan(timerX(L));
+        }
+        expect(makeLayout(z, { w: 9, h }).board_x).toBe(L.board_x);
+      }
+    }
   });
   it('计时器宽度 = 4 格 LED + 边框', () => {
     expect(timerWidth(2)).toBe(4 * 13 * 2 + 2 * 2);
@@ -161,6 +181,8 @@ describe('状态 → 贴图', () => {
     const g = gameWith({}, []);
     expect(cellSpriteName(g, st({ pressCell: 7 }), 7)).toBe('blank');
     expect(cellSpriteName(g, st({ pressCell: 7 }), 8)).toBe('closed');
+    g.setFlag(7, 3);
+    expect(cellSpriteName(g, st({ pressCell: 7 }), 7)).toBe('flag_3');
   });
 
   it('展开预览：待展开的邻格画成 blank（已开格与插旗格除外）', () => {

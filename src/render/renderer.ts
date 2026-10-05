@@ -85,7 +85,7 @@ export function chordTarget(game: Game, st: PaintState, i: number): boolean {
 /** 给定游戏与交互状态，返回该格应绘制的槽位名（供单测断言） */
 export function cellSpriteName(game: Game, st: PaintState, i: number): string {
   // 按住不放的那一格：画成已翻开的空白（按下预览），松手才真翻开
-  if (st.pressCell >= 0 && st.pressCell === i && game.open[i] === 0) return 'blank';
+  if (st.pressCell >= 0 && st.pressCell === i && game.open[i] === 0 && game.flag[i] === 0) return 'blank';
   // 展开预览
   if (chordTarget(game, st, i)) return 'blank';
   const revealed = game.over && !game.win;

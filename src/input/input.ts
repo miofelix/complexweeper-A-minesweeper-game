@@ -68,7 +68,8 @@ export class InputController {
     return this.touch_id !== null;
   }
   boardHeld(): boolean {
-    return this.r_down || this.m_down || (this.l_down && !this.face_down);
+    return this.r_down || this.m_down || (this.l_down && !this.face_armed) ||
+      (this.touch_id !== null && !this.face_armed && !this.touch_moved);
   }
   toggleFlagMode(): void {
     this.touch_flag_mode = !this.touch_flag_mode;
@@ -83,6 +84,10 @@ export class InputController {
     this.face_armed = false;
     this.clearLongPress();
     this.touch_id = null;
+    this.touch_moved = false;
+    this.touch_long_fired = false;
+    this.last_tap_t = 0;
+    this.last_tap_cell = -1;
   }
 
   // ---------------------------------------------------------------- 共用动作
@@ -98,6 +103,7 @@ export class InputController {
 
   private doReveal(c: number): void {
     const g = this.h.game;
+    if (g.over || c < 0 || c >= g.n || g.flag[c] !== 0 || g.open[c] !== 0) return;
     const covered = g.open[c] === 0;
     if (!g.started) {
       g.startAt(c, nowMs());
@@ -140,7 +146,7 @@ export class InputController {
         this.chord_cell = c;
         this.press_cell = -1;
       } else {
-        this.press_cell = c >= 0 && !on_face && !g.over && g.open[c] === 0 ? c : -1;
+        this.press_cell = c >= 0 && !on_face && !g.over && g.open[c] === 0 && g.flag[c] === 0 ? c : -1;
       }
       this.h.requestRender();
     } else if (e.button === 2) {
@@ -164,7 +170,15 @@ export class InputController {
     const L = this.h.getLayout();
     const g = this.h.game;
     const c = cellAt(L, g, px, py);
-    if (this.chord_cell >= 0) {
+    if (this.face_armed) {
+      const down = inFace(L, px, py, counterShownFor(g));
+      if (down !== this.face_down) {
+        this.face_down = down;
+        this.h.requestRender();
+      }
+      return;
+    }
+    if (this.m_down || (this.l_down && this.r_down)) {
       const next = c >= 0 ? c : -1;
       if (next !== this.chord_cell) {
         this.chord_cell = next;
@@ -172,8 +186,8 @@ export class InputController {
       }
       return;
     }
-    if (this.press_cell < 0) return;
-    const next = c >= 0 && g.open[c] === 0 ? c : -1;
+    if (!this.l_down) return;
+    const next = c >= 0 && !g.over && g.open[c] === 0 && g.flag[c] === 0 ? c : -1;
     if (next !== this.press_cell) {
       this.press_cell = next;
       this.h.requestRender();
@@ -229,7 +243,13 @@ export class InputController {
   // ---------------------------------------------------------------- 触屏（Pointer Events）
   onPointerDown(e: PointerEvent, px: number, py: number): void {
     if (e.pointerType === 'mouse') return; // 鼠标走 onMouseDown
-    if (this.touch_id !== null) return; // 只跟踪单指
+    if (this.touch_id !== null) {
+      if (this.touch_id !== e.pointerId) {
+        this.resetGesture();
+        this.h.requestRender();
+      }
+      return;
+    }
     const L = this.h.getLayout();
     const g = this.h.game;
     const on_face = inFace(L, px, py, counterShownFor(g));
@@ -253,13 +273,14 @@ export class InputController {
     } else if (this.touch_flag_mode) {
       // 插旗模式下点按 = 循环插旗，不做翻开预览
       this.press_cell = -1;
-    } else if (!on_face && c >= 0 && !g.over && g.open[c] === 0) {
+    } else if (!on_face && c >= 0 && !g.over && g.open[c] === 0 && g.flag[c] === 0) {
       this.press_cell = c;
     } else {
       this.press_cell = -1;
     }
     this.h.requestRender();
     // 长按 = 插旗
+    if (on_face || c < 0 || g.over || g.open[c] !== 0) return;
     this.touch_long_timer = window.setTimeout(() => {
       if (this.touch_id === null || this.touch_moved) return;
       this.touch_long_fired = true;
@@ -278,7 +299,12 @@ export class InputController {
       this.touch_moved = true;
       this.clearLongPress();
       this.face_down = false;
+      this.press_cell = -1;
+      this.chord_cell = -1;
+      this.h.requestRender();
+      return;
     }
+    if (this.touch_moved) return;
     if (this.chord_cell >= 0) {
       const L = this.h.getLayout();
       const g = this.h.game;
@@ -317,7 +343,9 @@ export class InputController {
     this.face_armed = false;
     this.touch_id = null;
 
-    if (this.touch_long_fired) {
+    if (this.touch_long_fired || this.touch_moved) {
+      this.last_tap_t = 0;
+      this.last_tap_cell = -1;
       this.h.requestRender();
       return;
     }
@@ -356,7 +384,6 @@ export class InputController {
   onMouseLeave(): void {
     if (this.face_down || this.face_armed || this.press_cell >= 0 || this.chord_cell >= 0) {
       this.face_down = false;
-      this.face_armed = false;
       this.press_cell = -1;
       this.chord_cell = -1;
       this.h.requestRender();
@@ -365,12 +392,7 @@ export class InputController {
 
   onPointerCancel(e: PointerEvent): void {
     if (e.pointerType === 'mouse' || this.touch_id !== e.pointerId) return;
-    this.clearLongPress();
-    this.press_cell = -1;
-    this.chord_cell = -1;
-    this.face_down = false;
-    this.face_armed = false;
-    this.touch_id = null;
+    this.resetGesture();
     this.h.requestRender();
   }
 
