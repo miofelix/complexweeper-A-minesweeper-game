@@ -23,6 +23,18 @@ describe('score storage', () => {
     expect(loadScores().best).toEqual([12, 0, 10000]);
   });
 
+  it('retains legacy complex scores and merges hyper scores independently', () => {
+    records.set(KEY, JSON.stringify({ best: [8, 24, 35] }));
+    expect(loadScores('complex').best).toEqual([8, 24, 35]);
+    expect(loadScores('hyper').best).toEqual([0, 0, 0]);
+    const stale = loadScores('hyper');
+    saveScores({ best: [12, 0, 30] }, 'hyper');
+    stale.best = [18, 24, 0];
+    expect(saveScores(stale, 'hyper').best).toEqual([12, 24, 30]);
+    expect(loadScores('hyper').best).toEqual([12, 24, 30]);
+    expect(loadScores().best).toEqual([8, 24, 35]);
+  });
+
   it('ignores malformed records and invalid individual times', () => {
     records.set(KEY, '{');
     expect(loadScores().best).toEqual([0, 0, 0]);

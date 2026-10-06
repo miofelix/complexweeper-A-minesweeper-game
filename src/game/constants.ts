@@ -3,7 +3,10 @@ export const MAX_H = 30;
 export const MAX_CELLS = MAX_W * MAX_H;
 export const MAX_MINES = 999;
 
-/** 四种雷：(a, b) 分别是实部与虚部的贡献 */
+/** 复数 i² = −1；双曲复数 j² = +1。 */
+export type GameMode = 'complex' | 'hyper';
+
+/** 四种雷：(a, b) 分别是实部与单位雷（i / j）的贡献 */
 export const TYPES: readonly (readonly [number, number])[] = [
   [1, 0],
   [-1, 0],
@@ -14,6 +17,12 @@ export const TYPES: readonly (readonly [number, number])[] = [
 /** 只可能出现的 24 个显示值 D = |S|^2 */
 export const ACHIEVABLE: readonly number[] = [
   0, 1, 2, 4, 5, 8, 9, 10, 13, 16, 17, 18, 20, 25, 26, 29, 32, 34, 36, 37, 40, 49, 50, 64,
+];
+
+/** 双曲模式的 39 个显示值 D = a² − b²，可为负。 */
+export const HYPER_ACHIEVABLE: readonly number[] = [
+  -64, -49, -48, -36, -35, -32, -25, -24, -21, -16, -15, -12, -9, -8, -7, -5, -4, -3, -1,
+  0, 1, 3, 4, 5, 7, 8, 9, 12, 15, 16, 21, 24, 25, 32, 35, 36, 48, 49, 64,
 ];
 
 export interface Preset {

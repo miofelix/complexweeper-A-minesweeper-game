@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game, splitEvenly } from '../src/game/game';
 import { Rng } from '../src/game/rng';
-import { ACHIEVABLE, Msg, PRESETS } from '../src/game/constants';
+import { ACHIEVABLE, HYPER_ACHIEVABLE, Msg, PRESETS } from '../src/game/constants';
 
 function buildBoard(w: number, h: number, mines: number, tc: number[], seed: number, start: number): Game {
   const g = new Game();
@@ -532,5 +532,155 @@ describe('等价性抽查：同种子走固定操作序列', () => {
       expect(a.flag[i]).toBe(b.flag[i]);
       expect(a.mine[i]).toBe(b.mine[i]);
     }
+  });
+});
+
+describe('双曲复数模式', () => {
+  const neighbors = [0, 1, 2, 3, 5, 6, 7, 8];
+
+  function neighborhood(types: number[]): Game {
+    const g = new Game();
+    g.w = 3;
+    g.h = 3;
+    g.mode = 'hyper';
+    g.newGame(123);
+    types.forEach((type, i) => { g.mine[neighbors[i]] = type; });
+    g.computeClues();
+    g.countTypes();
+    g.started = true;
+    return g;
+  }
+
+  function flags(g: Game, types: number[]): void {
+    neighbors.forEach((cell, i) => { g.setFlag(cell, types[i] ?? 0); });
+  }
+
+  it('所有 495 种邻域组合按 a²−b² 显示，覆盖全部 39 个可达值', () => {
+    const values = new Set<number>();
+    let combinations = 0;
+    for (let p = 0; p <= 8; p++) {
+      for (let n = 0; n <= 8 - p; n++) {
+        for (let jp = 0; jp <= 8 - p - n; jp++) {
+          for (let jn = 0; jn <= 8 - p - n - jp; jn++) {
+            const g = neighborhood([
+              ...Array<number>(p).fill(1), ...Array<number>(n).fill(2),
+              ...Array<number>(jp).fill(3), ...Array<number>(jn).fill(4),
+            ]);
+            const expected = (p - n) ** 2 - (jp - jn) ** 2;
+            expect(g.clue[4]).toBe(expected);
+            values.add(g.clue[4]);
+            combinations++;
+          }
+        }
+      }
+    }
+    expect(combinations).toBe(495);
+    expect([...values].sort((a, b) => a - b)).toEqual(HYPER_ACHIEVABLE);
+    expect(values.size).toBe(39);
+  });
+
+  it('−1 是合法非雷显示值，翻开时不会被当作雷', () => {
+    const g = neighborhood([3]);
+    expect(g.mine[4]).toBe(0);
+    expect(g.clue[4]).toBe(-1);
+    g.reveal(4, 0);
+    expect(g.open[4]).toBe(1);
+    expect(g.over).toBe(false);
+    expect(g.openedCount()).toBe(1);
+  });
+
+  it('D=0 的零因子邻域有雷，不能连片展开', () => {
+    const g = neighborhood([1, 3]);
+    expect(g.clue[4]).toBe(0);
+    expect(g.sumsOf(4, false)).toEqual([1, 1]);
+    expect(g.nbrMineCount(4)).toBe(2);
+    expect(g.isBlank(4)).toBe(false);
+    g.reveal(4, 0);
+    expect(g.openedCount()).toBe(1);
+  });
+
+  it('严格判据接受净实部、净双曲分量分别取负，但拒绝交换', () => {
+    const g = neighborhood([1, 3, 3]);
+    for (const types of [[1, 3, 3], [2, 3, 3], [1, 4, 4], [2, 4, 4]]) {
+      flags(g, types);
+      expect(g.nbrFlagCount(4)).toBe(3);
+      expect(g.matchComboTruth(4)).toBe(true);
+    }
+    flags(g, [1, 1, 3]);
+    expect(g.sumsOf(4, true)).toEqual([2, 1]);
+    expect(g.matchComboTruth(4)).toBe(false);
+  });
+
+  it('宽松判据可接受 D=0 和 ±16 的分量歧义，仍要求旗数相等', () => {
+    const cases = [
+      { truth: [1, 3], flagged: [1, 2], D: 0 },
+      { truth: [1, 1, 1, 1, 3, 3, 4, 4], flagged: [1, 1, 1, 1, 1, 3, 3, 3], D: 16 },
+      { truth: [3, 3, 3, 3, 1, 1, 2, 2], flagged: [3, 3, 3, 3, 3, 1, 1, 1], D: -16 },
+    ];
+    for (const { truth, flagged, D } of cases) {
+      const g = neighborhood(truth);
+      flags(g, flagged);
+      expect(g.clue[4]).toBe(D);
+      expect(g.matchComboTruth(4)).toBe(false);
+      g.judge_loose = true;
+      expect(g.matchComboTruth(4)).toBe(true);
+    }
+    const g = neighborhood([1, 3]);
+    g.judge_loose = true;
+    flags(g, [1, 1, 3, 3]);
+    expect(g.sumsOf(4, true)).toEqual([2, 2]);
+    expect(g.matchComboTruth(4)).toBe(false);
+  });
+
+  it('严格拒绝的展开不改棋盘，切换宽松后可展开同一组旗', () => {
+    const g = neighborhood([1, 3]);
+    g.open[4] = 1;
+    flags(g, [1, 2]);
+    const before = [...g.open];
+    g.tryExpand(4);
+    expect([...g.open]).toEqual(before);
+    expect(g.msg).toBe(Msg.judge_fail);
+    g.judge_loose = true;
+    g.tryExpand(4);
+    expect(g.openedCount()).toBe(g.safeCount());
+    expect(g.win).toBe(true);
+  });
+
+  it('判据只核对组合：位置插错仍然会踩雷', () => {
+    const g = neighborhood([3]);
+    g.open[4] = 1;
+    g.setFlag(1, 4);
+    expect(g.matchComboTruth(4)).toBe(true);
+    g.tryExpand(4);
+    expect(g.win).toBe(false);
+    expect(g.over).toBe(true);
+    expect(g.boom).toBe(0);
+  });
+
+  it('默认复数严格判据；重开保留模式和双曲判据并重置局面', () => {
+    const g = new Game();
+    expect(g.mode).toBe('complex');
+    expect(g.judge_loose).toBe(false);
+    g.mode = 'hyper';
+    g.judge_loose = true;
+    g.startAt(40, 100);
+    g.setFlag(0, 3);
+    g.newGame(456);
+    expect(g.mode).toBe('hyper');
+    expect(g.judge_loose).toBe(true);
+    expect(g.started).toBe(false);
+    expect(g.openedCount()).toBe(0);
+    expect(g.flagsTotal()).toBe(0);
+    expect(g.seed).toBe(456);
+  });
+
+  it('宽松设置不改变复数模式原有的组合判据', () => {
+    const g = neighborhood([1, 1]);
+    g.mode = 'complex';
+    g.judge_loose = true;
+    flags(g, [1, 2]);
+    expect(g.matchComboTruth(4)).toBe(true);
+    g.mode = 'hyper';
+    expect(g.matchComboTruth(4)).toBe(false);
   });
 });

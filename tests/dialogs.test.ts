@@ -32,13 +32,24 @@ afterEach(() => {
 });
 
 describe('modal dialogs', () => {
+  it('names the selected mode in records and uses j mine names in custom settings', async () => {
+    showScores({ best: [8, 24, 35] }, true, 'hyper');
+    expect(document.querySelector('.dlg-title')?.textContent).toBe('新纪录！ · 双曲复数模式');
+    expect(document.querySelector('.dlg-text')?.textContent).toContain('8 秒');
+    const result = showCustomDialog(current, 'hyper');
+    expect(document.querySelector('.dlg-title')?.textContent).toBe('自定义雷区 · 双曲复数模式');
+    expect(document.querySelector('label[for="dlg-custom-type-3"]')?.textContent).toBe('正双曲雷：');
+    expect(document.querySelector('label[for="dlg-custom-type-4"]')?.textContent).toBe('负双曲雷：');
+    closeDialog();
+    expect(await result).toEqual({ applied: false });
+  });
   it('labels the modal and custom inputs and restores background state and opener focus', async () => {
     const main = document.querySelector('main')!;
     const previousInert = main.inert;
     const result = showCustomDialog(current);
     const box = document.querySelector<HTMLElement>('[role="dialog"]')!;
     expect(box.getAttribute('aria-modal')).toBe('true');
-    expect(document.getElementById(box.getAttribute('aria-labelledby')!)?.textContent).toBe(DLG.title);
+    expect(document.getElementById(box.getAttribute('aria-labelledby')!)?.textContent).toBe(`${DLG.title} · 复数模式`);
     for (const input of fields()) {
       expect(input.labels?.length).toBe(1);
       expect(input.labels?.[0].textContent).toBeTruthy();

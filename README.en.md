@@ -2,9 +2,10 @@
 
 > [中文 README](README.md)
 
-Minesweeper, but the mines are complex numbers: the four mine types are positive-real, negative-real, positive-imaginary, and negative-imaginary; the number on a cell is the magnitude of the sum of all mines around it.
+Minesweeper, but the mines are complex numbers. Choose complex or split-complex mode; a cell shows the magnitude (or formal magnitude) of the sum of the surrounding mines.
 
 Reveal every non-mine cell to win.
+At the end, checkmarks and crosses show correctly and incorrectly identified mines, with sound effects for each mine type and for winning.
 
 **A pure static web app**: Vite + TypeScript + Canvas 2D, no runtime dependencies, no backend. The build output can be hosted on any static platform and works offline as a PWA.
 
@@ -16,9 +17,11 @@ This repository is a modified version (fork) of [Yueqing-Chen/complexweeper-A-mi
 
 Many thanks to the original author 青月晓 for designing and open-sourcing this unique complex-number minesweeper, and to contributors such as [VoidForge](https://github.com/VoidForge) for their fixes and improvements to the original repository. The original code is licensed under GPL-3.0, and the modifications in this repository are published under the same license (see `LICENSE`).
 
+Upstream features have been ported from the original fork point `577750e` (v1.0.12) through `8932be5` (v1.1.3). See [docs/UPSTREAM.md](docs/UPSTREAM.md) for the scope and future synchronization steps.
+
 ## Rules
 
-There are four mine types: positive-real, negative-real, positive-imaginary, and negative-imaginary — that is, +1, −1, +i, and −i.
+**Complex mode** has four mine types: positive-real, negative-real, positive-imaginary, and negative-imaginary — that is, +1, −1, +i, and −i.
 
 The number shown on a cell is the magnitude of the sum of all mines around it.
 
@@ -34,6 +37,12 @@ Zero and blank are not the same: a blank cell has no mines around it at all, whi
 You may expand around a numbered cell when the number of flags around it equals the true number of mines, and the real-to-imaginary ratio of the flags matches the true ratio or its reciprocal. You can use this to probe whether canceling pairs are nearby.
 Remember: you win by revealing all non-mine cells, not by flagging every mine correctly.
 
+**Split-complex mode** uses +1, −1, +j, and −j, with j² = 1. For a neighborhood sum a + bj, the clue is √(a² − b²); a negative value becomes an imaginary radical, so a = 0 and b = 2 displays 2i. There are 39 possible display values.
+
+Expansion requires the correct total flag count and matching absolute real and j components of the flag and mine sums. Each component may change sign independently, but the components cannot be swapped. A nonempty neighborhood such as 1 + j can display 0; it does not flood open as a blank cell.
+
+Each mode menu contains its three presets, custom settings, and records. Selecting a preset or applying custom settings starts a new game; viewing records does not change the current board.
+
 ## Controls
 
 | Action | Mouse | Touch |
@@ -46,6 +55,8 @@ Remember: you win by revealing all non-mine cells, not by flagging every mine co
 
 Flag mode also makes left clicks cycle flags. With a pen, the tip reveals and the barrel button cycles flags. Large boards scroll horizontally; on touch screens, drag to pan without revealing a cell.
 
+The third and fourth flags use i or j according to the mode. Four mine sounds, a victory sound, and a once-per-second timer tick can be muted with the sound button.
+
 ## Difficulty
 
 - Beginner: 9×9, 10 mines
@@ -55,7 +66,7 @@ Flag mode also makes left clicks cycle flags. With a pen, the tip reveals and th
 
 The custom dialog's distribution selector switches between random types and an exact mix. Changing the mode keeps your entries in both modes.
 
-Best times for the three standard presets are stored in the browser's `localStorage`; custom boards are not recorded.
+Each mode has independent best times for the three standard presets, stored in the browser's `localStorage`. Existing complex-mode records are preserved; custom boards are not recorded.
 
 ## Development
 
@@ -78,13 +89,13 @@ npm run preview    # preview the production build locally
 ## Project Structure
 
 ```
-public/assets/   image assets (sprite atlas PNG + slot JSON, icons)
+public/assets/   image assets (sprite atlas PNG + slot JSON, icons), plus sounds/
 src/game/        rule engine (pure TypeScript, no DOM, independently testable)
 src/render/      Canvas 2D rendering (atlas loading, layout, painting)
 src/input/       mouse + touch input → semantic actions
 src/app/         glue: timer, best scores, dialogs, toolbar
 tests/           vitest unit tests
-docs/ASSETS.md   asset licensing notice
+docs/           asset licensing and upstream synchronization notes
 scripts/         build helpers (icon generation)
 ```
 

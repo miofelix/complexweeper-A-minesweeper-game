@@ -74,11 +74,12 @@
         text-decoration: none;
       }
       .tool:active,
-      button.tool.active {
+      .tool.active {
         border-color: var(--shadow) var(--hilight) var(--hilight) var(--shadow);
       }
       button:focus-visible,
       a.tool:focus-visible,
+      summary:focus-visible,
       #board-viewport:focus-visible {
         outline: 2px solid #000080;
         outline-offset: 2px;
@@ -184,7 +185,7 @@
         margin: 4px 0 6px;
       }
       .dlg-grid .dlg-row label {
-        width: 56px;
+        width: 68px;
       }
       .dlg-grid .dlg-row input {
         flex: 1;
@@ -219,6 +220,40 @@
       .dlg-btn:active {
         border-color: var(--shadow) var(--hilight) var(--hilight) var(--shadow);
       }
+      .mode-menu {
+        position: relative;
+      }
+      .mode-menu summary {
+        list-style: none;
+      }
+      .mode-menu summary::-webkit-details-marker {
+        display: none;
+      }
+      .mode-menu summary::after {
+        content: ' ▾';
+        margin-left: 4px;
+      }
+      .mode-options {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 6px;
+        background: var(--btnface);
+        border: 1px solid var(--shadow);
+        box-shadow: 2px 2px 0 #808080;
+        min-width: 180px;
+      }
+      .mode-options .tool {
+        justify-content: flex-start;
+      }
+      .mode-menu:last-child .mode-options {
+        left: auto;
+        right: 0;
+      }
       @media (max-width: 640px) {
         #toolbar .group {
           border: none;
@@ -245,10 +280,26 @@
         <button class="tool" id="btn-new" title="F2">开局</button>
       </div>
       <div class="group">
-        <button class="tool" id="btn-beginner">初级</button>
-        <button class="tool" id="btn-intermediate">中级</button>
-        <button class="tool" id="btn-expert">高级</button>
-        <button class="tool" id="btn-custom">自定义…</button>
+        <details class="mode-menu" id="menu-complex">
+          <summary class="tool">复数模式</summary>
+          <div class="mode-options">
+            <button class="tool" id="btn-beginner">初级 · 9×9 · 10 雷</button>
+            <button class="tool" id="btn-intermediate">中级 · 16×16 · 40 雷</button>
+            <button class="tool" id="btn-expert">高级 · 30×16 · 99 雷</button>
+            <button class="tool" id="btn-scores">最高分纪录</button>
+            <button class="tool" id="btn-custom">自定义…</button>
+          </div>
+        </details>
+        <details class="mode-menu" id="menu-hyper">
+          <summary class="tool">双曲复数模式</summary>
+          <div class="mode-options">
+            <button class="tool" id="btn-hyper-beginner">初级 · 9×9 · 10 雷</button>
+            <button class="tool" id="btn-hyper-intermediate">中级 · 16×16 · 40 雷</button>
+            <button class="tool" id="btn-hyper-expert">高级 · 30×16 · 99 雷</button>
+            <button class="tool" id="btn-hyper-scores">最高分纪录</button>
+            <button class="tool" id="btn-hyper-custom">自定义…</button>
+          </div>
+        </details>
       </div>
       <div class="group">
         <button class="tool" id="btn-zoom-1">100%</button>
@@ -257,9 +308,9 @@
       </div>
       <div class="group">
         <button class="tool" id="btn-flag-mode" title="切换点按或左键为插旗">🚩 插旗模式</button>
+        <button class="tool" id="btn-sound" title="切换踩雷、通关和计时音效">音效：开</button>
       </div>
       <div class="group">
-        <button class="tool" id="btn-scores">最高分纪录</button>
         <button class="tool" id="btn-help">玩法</button>
         <button class="tool" id="btn-about">关于</button>
         <a class="tool" id="link-github" href="https://github.com/miofelix/complexweeper-web" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库（在新标签页打开）">GitHub ↗</a>

@@ -6,6 +6,7 @@ import { InputController } from '../src/input/input';
 import { makeLayout } from '../src/render/layout';
 import { loadScores, saveScores } from '../src/app/storage';
 import { closeDialog, isDialogOpen, showCustomDialog, showScores } from '../src/app/dialogs';
+import { GameAudio } from '../src/app/audio';
 
 vi.mock('../src/app/dialogs', () => ({
   showScores: vi.fn(),
@@ -64,7 +65,7 @@ describe('score eligibility', () => {
     expect(loadScores().best).toEqual([8, 24, 35]);
     expect(showScores).not.toHaveBeenCalled();
     app.showScores();
-    expect(showScores).toHaveBeenLastCalledWith({ best: [8, 24, 35] }, false);
+    expect(showScores).toHaveBeenLastCalledWith({ best: [8, 24, 35] }, false, 'complex');
   });
 
   it('retains records from other tabs when a new faster score is saved', () => {
@@ -72,7 +73,7 @@ describe('score eligibility', () => {
     saveScores({ best: [20, 24, 35] });
     win(app);
     expect(loadScores().best).toEqual([12, 24, 35]);
-    expect(showScores).toHaveBeenLastCalledWith({ best: [12, 24, 35] }, true);
+    expect(showScores).toHaveBeenLastCalledWith({ best: [12, 24, 35] }, true, 'complex');
   });
 
   it('keeps an in-memory record visible when persistent storage is unavailable', () => {
@@ -83,7 +84,7 @@ describe('score eligibility', () => {
     const app = makeApp();
     win(app);
     app.showScores();
-    expect(showScores).toHaveBeenLastCalledWith({ best: [12, 0, 0] }, false);
+    expect(showScores).toHaveBeenLastCalledWith({ best: [12, 0, 0] }, false, 'complex');
   });
   it('records wins from each selected standard preset', () => {
     const app = makeApp();
@@ -120,6 +121,110 @@ describe('score eligibility', () => {
     await app.openCustomDialog();
     win(app);
     expect(loadScores().best).toEqual([0, 12, 0]);
+  });
+
+  it('records modes separately and shows another mode without changing the board', () => {
+    const app = makeApp();
+    saveScores({ best: [8, 24, 35] });
+    app.setPreset(1, 'hyper');
+    win(app);
+    expect(loadScores('hyper').best).toEqual([0, 12, 0]);
+    expect(loadScores().best).toEqual([8, 24, 35]);
+    expect(showScores).toHaveBeenLastCalledWith({ best: [0, 12, 0] }, true, 'hyper');
+    app.showScores('complex');
+    expect(showScores).toHaveBeenLastCalledWith({ best: [8, 24, 35] }, false, 'complex');
+    expect(JSON.parse(app.debugState()).mode).toBe('hyper');
+    app.newGame();
+    expect(JSON.parse(app.debugState()).mode).toBe('hyper');
+  });
+
+  it('retains in-memory records for both modes when storage is denied', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => { throw new Error('Storage denied'); },
+      setItem: () => { throw new Error('Storage denied'); },
+    });
+    const app = makeApp();
+    win(app);
+    app.setPreset(1, 'hyper');
+    win(app);
+    app.showScores('complex');
+    expect(showScores).toHaveBeenLastCalledWith({ best: [12, 0, 0] }, false, 'complex');
+    app.showScores('hyper');
+    expect(showScores).toHaveBeenLastCalledWith({ best: [0, 12, 0] }, false, 'hyper');
+  });
+
+  it('applies custom settings to the requested mode and preserves the board on cancellation', async () => {
+    const app = makeApp();
+    vi.mocked(showCustomDialog).mockResolvedValue({ applied: false });
+    await app.openCustomDialog('hyper');
+    expect(JSON.parse(app.debugState()).mode).toBe('complex');
+    vi.mocked(showCustomDialog).mockResolvedValue({
+      applied: true, config: { w: 9, h: 9, mines: 10, typeCount: [0, 3, 3, 2, 2] },
+    });
+    await app.openCustomDialog('hyper');
+    expect(showCustomDialog).toHaveBeenLastCalledWith(expect.objectContaining({ w: 9, h: 9 }), 'hyper');
+    expect(JSON.parse(app.debugState()).mode).toBe('hyper');
+    win(app);
+    expect(loadScores('hyper').best).toEqual([0, 0, 0]);
+    expect(showScores).not.toHaveBeenCalled();
+  });
+});
+
+describe('audio integration', () => {
+  it('plays each mine type once per loss and allows another ending after restart', () => {
+    const play = vi.spyOn(GameAudio.prototype, 'play').mockImplementation(() => {});
+    const stop = vi.spyOn(GameAudio.prototype, 'stop').mockImplementation(() => {});
+    const app = makeApp();
+    const game = (app as unknown as { game: Game }).game;
+    for (let type = 1; type <= 4; type++) {
+      app.newGame();
+      game.mine[0] = type;
+      game.lose(0);
+      app.onGameOver();
+      app.onGameOver();
+      expect(play).toHaveBeenLastCalledWith(`mine_${type}`);
+    }
+    expect(play).toHaveBeenCalledTimes(4);
+    expect(stop).toHaveBeenCalledTimes(4);
+    app.newGame();
+    win(app);
+    app.onGameOver();
+    expect(play).toHaveBeenLastCalledWith('win');
+    expect(play).toHaveBeenCalledTimes(5);
+  });
+
+  it('ticks once on a new elapsed second and stops ticking when the game ends', () => {
+    vi.useFakeTimers();
+    try {
+      const play = vi.spyOn(GameAudio.prototype, 'play').mockImplementation(() => {});
+      const app = makeApp();
+      const internal = app as unknown as { game: Game; startTimer(): void };
+      internal.game.started = true;
+      internal.game.t0 = 0;
+      const time = vi.spyOn(performance, 'now').mockReturnValue(500);
+      internal.startTimer();
+      vi.advanceTimersByTime(250);
+      expect(play).not.toHaveBeenCalled();
+      time.mockReturnValue(1050);
+      vi.advanceTimersByTime(500);
+      expect(play).toHaveBeenCalledTimes(1);
+      time.mockReturnValue(5050);
+      vi.advanceTimersByTime(250);
+      expect(play).toHaveBeenCalledTimes(2);
+      expect(play).toHaveBeenLastCalledWith('tick');
+      time.mockReturnValue(9999500);
+      vi.advanceTimersByTime(250);
+      expect(play).toHaveBeenCalledTimes(3);
+      time.mockReturnValue(10000500);
+      vi.advanceTimersByTime(500);
+      expect(play).toHaveBeenCalledTimes(3);
+      internal.game.lose(0);
+      app.onGameOver();
+      vi.advanceTimersByTime(2000);
+      expect(play).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

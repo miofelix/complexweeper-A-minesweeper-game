@@ -1,7 +1,7 @@
 // Canvas 2D 绘制：与桌面版 main.zig 的 paint() 逐条对应，经典灰底立体边框风格。
 
 import type { Game } from '../game/game';
-import { Atlas, type Slot } from './atlas';
+import { Atlas, mineSpriteName, numberSpriteName, type Slot } from './atlas';
 import {
   FACE_SIZE,
   type Layout,
@@ -91,19 +91,26 @@ export function cellSpriteName(game: Game, st: PaintState, i: number): string {
   const revealed = game.over && !game.win;
   if (game.open[i] !== 0) {
     if (game.mine[i] !== 0) {
-      if (game.boom === i) return `boom_${game.mine[i]}`;
-      return `mine_${game.mine[i]}`;
+      if (game.boom === i) return mineSpriteName('boom', game.mine[i], game.mode);
+      return mineSpriteName('mine', game.mine[i], game.mode);
     }
     const D = game.clue[i];
     if (D === 0 && game.nbrMineCount(i) === 0) return 'blank';
-    return `num_${D}`;
+    return numberSpriteName(D, game.mode);
   }
   if (game.flag[i] !== 0) {
-    const right = game.mine[i] === game.flag[i];
-    if (revealed && !right) return `wrong_${game.flag[i]}`;
-    return `flag_${game.flag[i]}`;
+    const truth = game.mine[i];
+    const flag = game.flag[i];
+    if (revealed) {
+      if (truth === 0) return 'wrongblank';
+      return mineSpriteName(flag === truth ? 'right' : 'wrong', truth, game.mode);
+    }
+    if (game.win) {
+      return mineSpriteName(truth !== 0 && flag === truth ? 'rightflag' : 'wrongflag', truth || flag, game.mode);
+    }
+    return mineSpriteName('flag', flag, game.mode);
   }
-  if (revealed && game.mine[i] !== 0) return `mine_${game.mine[i]}`;
+  if (revealed && game.mine[i] !== 0) return mineSpriteName('mine', game.mine[i], game.mode);
   return 'closed';
 }
 
@@ -196,12 +203,12 @@ export class Renderer {
       const imag = counterImag(t);
       const cw = counterWidth(L.z, panelCells(imag, val));
       this.draw3d(ctx, col_x, cy, cw, 26 * L.z, 1 * L.z, false);
-      this.blitSq(ctx, this.atlas.flagSprite(t), col_x + L.z + L.z, cy + Math.floor((26 * L.z - 16 * L.z) / 2), 16 * L.z);
+      this.blitSq(ctx, this.atlas.flagSprite(t, game.mode), col_x + L.z + L.z, cy + Math.floor((26 * L.z - 16 * L.z) / 2), 16 * L.z);
       const led_x = col_x + L.z + 2 * L.z + 16 * L.z;
       const led_y = cy + Math.floor((26 * L.z - 23 * L.z) / 2);
       const vw = this.drawLed(ctx, led_x, led_y, val, panelValueDigits(imag, val), L.z);
-      // 虚雷还有第四格 i 单位（没开局时那一格也画成空格子）
-      if (imag) this.blit(ctx, this.atlas.slot(val === null ? 'led_blank' : 'led_i'), led_x + vw, led_y, 13 * L.z, 23 * L.z);
+      // 单位雷第四格显示 i / j；没开局时也画成空格子。
+      if (imag) this.blit(ctx, this.atlas.slot(val === null ? 'led_blank' : game.mode === 'hyper' ? 'led_j' : 'led_i'), led_x + vw, led_y, 13 * L.z, 23 * L.z);
       cy += 26 * L.z + 2 * L.z;
     }
 

@@ -99,6 +99,7 @@ const resources = {
   'assets/atlas.png': 'atlas pixels',
   'manifest.webmanifest': '{"start_url":"./"}',
   'assets/icon-192.png': 'icon pixels',
+  'assets/sounds/tick.wav': 'timer sound',
 };
 
 afterEach(async () => {
@@ -199,7 +200,7 @@ describe('build-derived precache', () => {
   it('includes every generated bundle and public asset and changes revision when contents change', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'complexweeper-sw-'));
     temporaryDirectories.push(dir);
-    await mkdir(join(dir, 'assets'));
+    await mkdir(join(dir, 'assets', 'sounds'), { recursive: true });
     for (const [path, body] of Object.entries({ ...resources, 'assets/index-12345678.css': '.board { display: block; }', 'assets/icon-512.png': 'large icon' })) {
       await writeFile(join(dir, path), body);
     }
@@ -208,6 +209,7 @@ describe('build-derived precache', () => {
     expect(first.entries.map((entry) => entry.path)).toEqual(expect.arrayContaining([
       'index.html', 'assets/index-12345678.js', 'assets/index-12345678.css', 'manifest.webmanifest',
       'assets/atlas.json', 'assets/atlas.png', 'assets/icon-192.png', 'assets/icon-512.png',
+      'assets/sounds/tick.wav',
     ]));
     expect(source).toContain(first.revision);
     expect(source).not.toContain('__CW_PRECACHE__');

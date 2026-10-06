@@ -2,13 +2,19 @@
 // 与桌面版 game.zig 逐条对应，行为完全等价（同种子同棋盘）。
 
 import { MAX_CELLS, TYPES, Msg } from './constants';
+import type { GameMode } from './constants';
 import { Rng } from './rng';
 
 export class Game {
   w = 9;
   h = 9;
   n = 81;
+  /** 玩法和判据是设置，newGame 保留它们。 */
+  mode: GameMode = 'complex';
+  /** 双曲模式的宽松判据：仅要求显示值相同，旗数仍须相等。 */
+  judge_loose = false;
   mine = new Uint8Array(MAX_CELLS);
+  /** 复数模式 a²+b²；双曲模式 a²−b²。是否为雷须读 mine，不能用 −1 判断。 */
   clue = new Int16Array(MAX_CELLS).fill(-1);
   open = new Uint8Array(MAX_CELLS);
   flag = new Uint8Array(MAX_CELLS);
@@ -73,6 +79,33 @@ export class Game {
       if (this.mine[buf[i]] !== 0) n++;
     }
     return n;
+  }
+
+  /** 邻域里的旗帜数。 */
+  nbrFlagCount(cell: number): number {
+    const buf: number[] = [];
+    const k = this.nbrs(cell, buf);
+    let n = 0;
+    for (let i = 0; i < k; i++) {
+      if (this.flag[buf[i]] !== 0) n++;
+    }
+    return n;
+  }
+
+  /** 邻域的净实部和净单位分量；use_flag 为真时统计旗帜。 */
+  sumsOf(cell: number, use_flag: boolean): [number, number] {
+    const source = use_flag ? this.flag : this.mine;
+    const buf: number[] = [];
+    const k = this.nbrs(cell, buf);
+    let a = 0;
+    let b = 0;
+    for (let i = 0; i < k; i++) {
+      const t = source[buf[i]];
+      if (t === 0) continue;
+      a += TYPES[t - 1][0];
+      b += TYPES[t - 1][1];
+    }
+    return [a, b];
   }
 
   /** 空白格：邻域一颗雷都没有。只有它会连片展开 */
@@ -184,19 +217,8 @@ export class Game {
         this.clue[i] = -1;
         continue;
       }
-      let a = 0;
-      let b = 0;
-      const buf: number[] = [];
-      const k = this.nbrs(i, buf as any);
-      for (let x = 0; x < k; x++) {
-        const j = buf[x];
-        // 必须跳过空邻居：mine[j]==0 时 TYPES[mine[j]-1] 会越界
-        if (this.mine[j] === 0) continue;
-        const t = TYPES[this.mine[j] - 1];
-        a += t[0];
-        b += t[1];
-      }
-      this.clue[i] = a * a + b * b;
+      const [a, b] = this.sumsOf(i, false);
+      this.clue[i] = this.mode === 'hyper' ? a * a - b * b : a * a + b * b;
     }
   }
 
@@ -301,10 +323,17 @@ export class Game {
   }
 
   /**
-   * 组合匹配（严档，现行默认）：旗帜总数 = 邻域真实雷总数，
-   * 且实/虚旗数与真实实/虚雷数一致（顺序不限）
+   * 旗数必须等于邻域雷数。复数模式允许实/虚总数交换；
+   * 双曲模式要求净分量的绝对值分别相等，宽松判据仅要求 signed D 相等。
    */
   matchComboTruth(cell: number): boolean {
+    if (this.nbrMineCount(cell) !== this.nbrFlagCount(cell)) return false;
+    if (this.mode === 'hyper') {
+      const [a, b] = this.sumsOf(cell, false);
+      const [fa, fb] = this.sumsOf(cell, true);
+      if (this.judge_loose) return a * a - b * b === fa * fa - fb * fb;
+      return Math.abs(fa) === Math.abs(a) && Math.abs(fb) === Math.abs(b);
+    }
     const truth = [0, 0, 0, 0];
     const got = [0, 0, 0, 0];
     const buf: number[] = [];

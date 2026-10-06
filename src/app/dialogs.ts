@@ -1,7 +1,8 @@
 // 对话框：自定义棋盘 / 最高分纪录 / 玩法与操作 / 关于。经典扫雷风格的白底弹窗。
 
 import { splitEvenly } from '../game/game';
-import { ABOUT_TEXT, DLG, HELP_TEXT, SCORE_LABELS } from './strings';
+import type { GameMode } from '../game/constants';
+import { ABOUT_TEXT, DLG, HELP_TEXT, MODE_LABELS, SCORE_LABELS } from './strings';
 import type { Scores } from './storage';
 
 export interface CustomConfig {
@@ -137,7 +138,7 @@ export function showAbout(): void {
   openDialog('关于复扫雷', makeInfoBody(ABOUT_TEXT));
 }
 
-export function showScores(scores: Scores, highlight: boolean): void {
+export function showScores(scores: Scores, highlight: boolean, mode: GameMode = 'complex'): void {
   const body = document.createElement('div');
   body.className = 'dlg-body';
   const list = document.createElement('div');
@@ -155,7 +156,7 @@ export function showScores(scores: Scores, highlight: boolean): void {
   ok.addEventListener('click', () => closeDialog());
   row.appendChild(ok);
   body.appendChild(row);
-  openDialog(highlight ? '新纪录！' : '最高分纪录', body);
+  openDialog(`${highlight ? '新纪录！' : '最高分纪录'} · ${MODE_LABELS[mode]}`, body);
 }
 
 export interface CustomDialogResult {
@@ -164,7 +165,7 @@ export interface CustomDialogResult {
 }
 
 /** 自定义雷区对话框。校验规则与桌面版一致。 */
-export function showCustomDialog(current: { w: number; h: number; mines: number; typeCount: number[] }): Promise<CustomDialogResult> {
+export function showCustomDialog(current: { w: number; h: number; mines: number; typeCount: number[] }, gameMode: GameMode = 'complex'): Promise<CustomDialogResult> {
   return new Promise((resolve) => {
     const body = document.createElement('div');
     body.className = 'dlg-body dlg-custom';
@@ -231,7 +232,7 @@ export function showCustomDialog(current: { w: number; h: number; mines: number;
     grid.className = 'dlg-grid';
     const tc = hasExactMix ? current.typeCount : splitEvenly(current.mines);
     const tInputs: HTMLInputElement[] = [];
-    DLG.names.forEach((name, k) => {
+    (gameMode === 'hyper' ? DLG.hyperNames : DLG.names).forEach((name, k) => {
       const cell = document.createElement('div');
       cell.className = 'dlg-row';
       const label = document.createElement('label');
@@ -336,7 +337,7 @@ export function showCustomDialog(current: { w: number; h: number; mines: number;
       }
     });
 
-    openDialog(DLG.title, body, () => resolve(result));
+    openDialog(`${DLG.title} · ${MODE_LABELS[gameMode]}`, body, () => resolve(result));
   });
 }
 

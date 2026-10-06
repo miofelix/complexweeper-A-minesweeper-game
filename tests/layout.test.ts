@@ -1,6 +1,9 @@
 // 布局与状态→贴图映射单测。
-import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { describe, expect, it, vi } from 'vitest';
 import { Game } from '../src/game/game';
+import { ACHIEVABLE, HYPER_ACHIEVABLE } from '../src/game/constants';
+import { Atlas, numberSpriteName, type Slot } from '../src/render/atlas';
 import {
   cellAt,
   counterWidth,
@@ -19,7 +22,13 @@ import {
   timerX,
   valueDigits,
 } from '../src/render/layout';
-import { cellSpriteName, faceSpriteName, type PaintState } from '../src/render/renderer';
+import { cellSpriteName, faceSpriteName, Renderer, type PaintState } from '../src/render/renderer';
+
+const atlasMeta = JSON.parse(readFileSync(new URL('../public/assets/atlas.json', import.meta.url), 'utf8')) as {
+  width: number;
+  height: number;
+  slots: Slot[];
+};
 
 const st = (over: Partial<PaintState> = {}): PaintState => ({
   pressCell: -1,
@@ -196,15 +205,15 @@ describe('状态 → 贴图', () => {
     expect(cellSpriteName(g, s2, 7)).toBe('closed');
   });
 
-  it('失败揭示：错旗 → wrong_t，未标雷 → mine_t，踩中 → boom_t', () => {
+  it('失败揭示：空格错旗 → wrongblank，正确旗 → right_t，未标雷 → mine_t，踩中 → boom_t', () => {
     const g = gameWith({ 1: 3, 3: 3, 5: 2 }, [], { 2: 4, 3: 3 });
     g.over = true;
     g.win = false;
     g.boom = 1;
     g.open[1] = 1;
     expect(cellSpriteName(g, st(), 1)).toBe('boom_3'); // 踩中的雷
-    expect(cellSpriteName(g, st(), 2)).toBe('wrong_4'); // 标错的旗（该格无雷）
-    expect(cellSpriteName(g, st(), 3)).toBe('flag_3'); // 标对的旗保持
+    expect(cellSpriteName(g, st(), 2)).toBe('wrongblank'); // 标错的旗（该格无雷）
+    expect(cellSpriteName(g, st(), 3)).toBe('right_3'); // 标对的雷
     expect(cellSpriteName(g, st(), 5)).toBe('mine_2'); // 未标出的雷被揭示
   });
 
@@ -213,6 +222,64 @@ describe('状态 → 贴图', () => {
     g.over = true;
     g.win = true;
     expect(cellSpriteName(g, st(), 1)).toBe('closed');
+  });
+
+  it('两种模式的全部终局旗帜组合按真实雷型给出复盘反馈', () => {
+    for (const mode of ['complex', 'hyper'] as const) {
+      const families = mode === 'hyper'
+        ? ['1', '2', '3', '4'].map((t, i) => `${i >= 2 ? 'h' : ''}right_${t}`)
+        : ['right_1', 'right_2', 'right_3', 'right_4'];
+      for (let truth = 0; truth <= 4; truth++) {
+        for (let flag = 1; flag <= 4; flag++) {
+          const g = gameWith(truth ? { 0: truth } : {}, [], { 0: flag });
+          g.mode = mode;
+          g.over = true;
+          const correct = families[truth - 1];
+          const wrong = correct?.replace('right_', 'wrong_');
+          expect(cellSpriteName(g, st(), 0)).toBe(truth === 0 ? 'wrongblank' : flag === truth ? correct : wrong);
+          g.win = true;
+          const winTruth = truth || flag;
+          const prefix = mode === 'hyper' && winTruth >= 3 ? 'h' : '';
+          expect(cellSpriteName(g, st(), 0)).toBe(`${prefix}${truth !== 0 && flag === truth ? 'rightflag' : 'wrongflag'}_${winTruth}`);
+        }
+      }
+    }
+  });
+
+  it('双曲数字使用有符号映射；相消的零保留数字贴图', () => {
+    const g = gameWith({ 0: 1 }, [5]);
+    g.mode = 'hyper';
+    const shared = [0, 1, 4, 5, 8, 9, 16, 25, 32, 36, 49, 64];
+    const extra = [3, 7, 12, 15, 21, 24, 35, 48];
+    for (const D of shared) {
+      g.clue[5] = D;
+      expect(cellSpriteName(g, st(), 5)).toBe(`num_${D}`);
+    }
+    for (const D of extra) {
+      g.clue[5] = D;
+      expect(cellSpriteName(g, st(), 5)).toBe(`hnum_${D}`);
+    }
+    for (const D of [...shared.slice(1), ...extra]) {
+      g.clue[5] = -D;
+      expect(cellSpriteName(g, st(), 5)).toBe(`hnum_${D}_i`);
+    }
+    g.mine.fill(0);
+    g.clue[5] = 0;
+    expect(cellSpriteName(g, st(), 5)).toBe('blank');
+  });
+
+  it('双曲模式的旗、雷和爆炸使用 j 贴图，实雷共用复数素材', () => {
+    for (let t = 1; t <= 4; t++) {
+      const g = gameWith({ 0: t }, [], { 1: t });
+      g.mode = 'hyper';
+      const prefix = t >= 3 ? 'h' : '';
+      expect(cellSpriteName(g, st(), 1)).toBe(`${prefix}flag_${t}`);
+      g.over = true;
+      expect(cellSpriteName(g, st(), 0)).toBe(`${prefix}mine_${t}`);
+      g.open[0] = 1;
+      g.boom = 0;
+      expect(cellSpriteName(g, st(), 0)).toBe(`${prefix}boom_${t}`);
+    }
   });
 
   it('人脸状态', () => {
@@ -226,5 +293,81 @@ describe('状态 → 贴图', () => {
     expect(faceSpriteName(g, st())).toBe('face_win');
     g.win = false;
     expect(faceSpriteName(g, st())).toBe('face_dead');
+  });
+});
+
+describe('上游 1.1.3 图集', () => {
+  it('图像尺寸、槽位边界与两种模式全部显示值一致', () => {
+    const png = readFileSync(new URL('../public/assets/atlas.png', import.meta.url));
+    expect(png.readUInt32BE(16)).toBe(atlasMeta.width);
+    expect(png.readUInt32BE(20)).toBe(atlasMeta.height);
+    expect(png[25]).toBe(6); // RGBA，保留上游透明通道
+    const names = new Set(atlasMeta.slots.map((s) => s.name));
+    expect(names.size).toBe(atlasMeta.slots.length);
+    for (const s of atlasMeta.slots) {
+      expect(s.x).toBeGreaterThanOrEqual(0);
+      expect(s.y).toBeGreaterThanOrEqual(0);
+      expect(s.x + s.w).toBeLessThanOrEqual(atlasMeta.width);
+      expect(s.y + s.h).toBeLessThanOrEqual(atlasMeta.height);
+    }
+    for (const D of ACHIEVABLE) expect(names.has(numberSpriteName(D))).toBe(true);
+    for (const D of HYPER_ACHIEVABLE) expect(names.has(numberSpriteName(D, 'hyper'))).toBe(true);
+    for (const family of ['flag', 'mine', 'boom', 'wrong', 'right', 'rightflag', 'wrongflag']) {
+      for (let t = 1; t <= 4; t++) {
+        expect(names.has(`${family}_${t}`)).toBe(true);
+        if (t >= 3) expect(names.has(`h${family}_${t}`)).toBe(true);
+      }
+    }
+    expect(names.has('wrongblank')).toBe(true);
+    expect(names.has('led_j')).toBe(true);
+  });
+
+  it('图集加载建立复数及双曲模式的完整数字映射', async () => {
+    class LoadedImage {
+      onload?: () => void;
+      set src(_value: string) { Promise.resolve().then(() => this.onload?.()); }
+    }
+    vi.stubGlobal('Image', LoadedImage);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => atlasMeta })));
+    try {
+      const atlas = new Atlas();
+      await atlas.load('/atlas.png', '/atlas.json');
+      expect(atlas.numByD.size).toBe(24);
+      expect(atlas.hyperNumByD.size).toBe(39);
+      expect(atlas.hyperNumByD.get(-3)?.name).toBe('hnum_3_i');
+      expect(atlas.hyperNumByD.get(4)).toBe(atlas.numByD.get(4));
+      expect(atlas.flagSprite(3, 'hyper').name).toBe('hflag_3');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('计雷器随模式切换单位和旗帜；开局前单位仍为空格', () => {
+    const atlas = new Atlas();
+    atlas.image = {} as HTMLImageElement;
+    for (const slot of atlasMeta.slots) atlas.slots.set(slot.name, slot);
+    const renderer = new Renderer(atlas);
+    const g = new Game();
+    const rendered: string[] = [];
+    const ctx = {
+      fillRect: vi.fn(),
+      drawImage: (_image: HTMLImageElement, sx: number, sy: number, sw: number, sh: number) => {
+        rendered.push(atlasMeta.slots.find((s) => s.x === sx && s.y === sy && s.w === sw && s.h === sh)!.name);
+      },
+    } as unknown as CanvasRenderingContext2D;
+    for (const mode of ['complex', 'hyper'] as const) {
+      g.mode = mode;
+      g.started = true;
+      rendered.length = 0;
+      renderer.paint(ctx, g, makeLayout(1, g), st());
+      expect(rendered.filter((name) => name === (mode === 'hyper' ? 'led_j' : 'led_i'))).toHaveLength(2);
+      expect(rendered).toContain(mode === 'hyper' ? 'hflag_3' : 'flag_3');
+      expect(rendered).toContain(mode === 'hyper' ? 'hflag_4' : 'flag_4');
+      g.started = false;
+      rendered.length = 0;
+      renderer.paint(ctx, g, makeLayout(1, g), st());
+      expect(rendered).not.toContain('led_i');
+      expect(rendered).not.toContain('led_j');
+    }
   });
 });

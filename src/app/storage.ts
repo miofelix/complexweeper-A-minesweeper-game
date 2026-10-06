@@ -1,16 +1,22 @@
-// 最高分纪录：三档标准难度各记最快秒数，localStorage 持久化。
+// 最高分纪录：每个模式的三档标准难度各记最快秒数，localStorage 持久化。
 // 替代桌面版的注册表（HKCU\Software\Complexweeper）。接口隔离，未来可换后端实现。
 
-const KEY = 'complexweeper-web.scores.v1';
+import type { GameMode } from '../game/constants';
+
+// 复数模式沿用原来的键，升级后保留已有纪录。
+const KEYS: Record<GameMode, string> = {
+  complex: 'complexweeper-web.scores.v1',
+  hyper: 'complexweeper-web.scores.hyper.v1',
+};
 
 export interface Scores {
   /** 下标 0/1/2 = 初级/中级/高级；0 = 还没有纪录 */
   best: [number, number, number];
 }
 
-export function loadScores(): Scores {
+export function loadScores(mode: GameMode = 'complex'): Scores {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEYS[mode]);
     if (!raw) return { best: [0, 0, 0] };
     const v = JSON.parse(raw);
     if (!Array.isArray(v?.best) || v.best.length !== 3) return { best: [0, 0, 0] };
@@ -20,10 +26,10 @@ export function loadScores(): Scores {
   }
 }
 
-export function saveScores(s: Scores): Scores {
-  const merged = mergeScores(s, loadScores());
+export function saveScores(s: Scores, mode: GameMode = 'complex'): Scores {
+  const merged = mergeScores(s, loadScores(mode));
   try {
-    localStorage.setItem(KEY, JSON.stringify(merged));
+    localStorage.setItem(KEYS[mode], JSON.stringify(merged));
   } catch {
     // 隐私模式等写不进去就静默放弃（不影响玩）
   }
