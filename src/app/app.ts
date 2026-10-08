@@ -6,7 +6,7 @@ import { Atlas } from '../render/atlas';
 import { Renderer } from '../render/renderer';
 import { makeLayout } from '../render/layout';
 import { InputController, nowMs } from '../input/input';
-import { loadScores, mergeScores, saveScores, type Scores } from './storage';
+import { loadScores, loadSoundEnabled, mergeScores, saveScores, saveSoundEnabled, type Scores } from './storage';
 import { isDialogOpen, showAbout, showCustomDialog, showHelp, showScores } from './dialogs';
 import { APP_TITLE, APP_VERSION } from './strings';
 import { GameAudio } from './audio';
@@ -24,7 +24,7 @@ export class App {
   private selected_preset = 0;
   private scores: Record<GameMode, Scores> = { complex: loadScores(), hyper: loadScores('hyper') };
   private audio = new GameAudio();
-  private sound_enabled = true;
+  private sound_enabled = loadSoundEnabled();
   private over_sound_done = false;
   private tick_second = 0;
   private timer_id: number | null = null;
@@ -39,6 +39,7 @@ export class App {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D 不可用');
     this.ctx = ctx;
+    this.audio.setMuted(!this.sound_enabled);
   }
 
   async start(): Promise<void> {
@@ -415,6 +416,7 @@ export class App {
     on('btn-sound', () => {
       this.sound_enabled = !this.sound_enabled;
       this.audio.setMuted(!this.sound_enabled);
+      saveSoundEnabled(this.sound_enabled);
       this.syncToolbar();
     });
     const menus = Array.from(document.querySelectorAll<HTMLDetailsElement>('.mode-menu'));

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/app/app';
 import { GameAudio } from '../src/app/audio';
 import { showCustomDialog, showScores } from '../src/app/dialogs';
-import { saveScores } from '../src/app/storage';
+import { loadSoundEnabled, saveScores, saveSoundEnabled } from '../src/app/storage';
 import type { GameMode } from '../src/game/constants';
 import type { Game } from '../src/game/game';
 import { InputController } from '../src/input/input';
@@ -138,18 +138,55 @@ describe('real page toolbar', () => {
   it('toggles sound playback and exposes the matching pressed state and label', () => {
     makeToolbar();
     const button = element('btn-sound');
+    expect(GameAudio.prototype.setMuted).toHaveBeenLastCalledWith(false);
     expect(button.getAttribute('aria-pressed')).toBe('true');
     button.click();
     expect(GameAudio.prototype.setMuted).toHaveBeenLastCalledWith(true);
     expect(button.getAttribute('aria-pressed')).toBe('false');
     expect(button.classList.contains('active')).toBe(false);
     expect(button.textContent).toBe('音效：关');
+    expect(loadSoundEnabled()).toBe(false);
     button.click();
     expect(GameAudio.prototype.setMuted).toHaveBeenLastCalledWith(false);
     expect(button.getAttribute('aria-pressed')).toBe('true');
     expect(button.classList.contains('active')).toBe(true);
     expect(button.textContent).toBe('音效：开');
+    expect(loadSoundEnabled()).toBe(true);
     expect(GameAudio.prototype.unlock).toHaveBeenCalledTimes(2);
+  });
+
+  it('restores a disabled sound preference before playing and keeps it across new games and modes', () => {
+    saveSoundEnabled(false);
+    const { app } = makeToolbar();
+    const button = element('btn-sound');
+    expect(GameAudio.prototype.setMuted).toHaveBeenLastCalledWith(true);
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(button.classList.contains('active')).toBe(false);
+    expect(button.textContent).toBe('音效：关');
+    app.newGame();
+    element('btn-hyper-intermediate').click();
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(loadSoundEnabled()).toBe(false);
+    button.click();
+    expect(GameAudio.prototype.setMuted).toHaveBeenLastCalledWith(false);
+    expect(loadSoundEnabled()).toBe(true);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps the sound switch usable when browser storage is denied', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => { throw new Error('Storage reads denied'); },
+      setItem: () => { throw new Error('Storage writes denied'); },
+    });
+    makeToolbar();
+    const button = element('btn-sound');
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    button.click();
+    expect(GameAudio.prototype.setMuted).toHaveBeenLastCalledWith(true);
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    button.click();
+    expect(GameAudio.prototype.setMuted).toHaveBeenLastCalledWith(false);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('opens one menu at a time, closes on Escape with focus restored, and closes on an outside click', async () => {

@@ -8,6 +8,10 @@
 
 *The assets live in `public/assets/atlas.png` (a 208×207 sheet) and `public/assets/atlas.json` (slot table), copied unchanged from upstream v1.1.3 (`8932be5`). Slots are referred to by name below.*
 
+同步至 v1.2.0（`80502e5`）时，上游图集与音效均未改变，沿用上述来源版本。模式与雷名按 v1.2.0 更新：圆复数模式，以及双曲复数模式（闵可夫斯基模式）；双曲模式的实雷又称类空雷，双曲虚雷又称类时雷，j 为类时单位。
+
+*The upstream atlas and sounds did not change in the v1.2.0 (`80502e5`) synchronization, so their source version remains v1.1.3. The terminology now follows v1.2.0: circular complex mode and split-complex mode (Minkowski mode); in the latter, real mines are also called spacelike mines, split-imaginary mines are timelike mines, and j is the timelike unit.*
+
 ## 一、扫雷原始图像素材 —— 权利属于 Microsoft / Original Minesweeper graphics — © Microsoft
 
 | 槽位 Slot | 内容 Content |

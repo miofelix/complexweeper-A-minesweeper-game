@@ -34,12 +34,14 @@ afterEach(() => {
 describe('modal dialogs', () => {
   it('names the selected mode in records and uses j mine names in custom settings', async () => {
     showScores({ best: [8, 24, 35] }, true, 'hyper');
-    expect(document.querySelector('.dlg-title')?.textContent).toBe('新纪录！ · 双曲复数模式');
+    expect(document.querySelector('.dlg-title')?.textContent).toBe('新纪录！ · 双曲复数模式（闵可夫斯基模式）');
     expect(document.querySelector('.dlg-text')?.textContent).toContain('8 秒');
     const result = showCustomDialog(current, 'hyper');
-    expect(document.querySelector('.dlg-title')?.textContent).toBe('自定义雷区 · 双曲复数模式');
-    expect(document.querySelector('label[for="dlg-custom-type-3"]')?.textContent).toBe('正双曲雷：');
-    expect(document.querySelector('label[for="dlg-custom-type-4"]')?.textContent).toBe('负双曲雷：');
+    expect(document.querySelector('.dlg-title')?.textContent).toBe('自定义雷区 · 双曲复数模式（闵可夫斯基模式）');
+    expect(document.querySelector('label[for="dlg-custom-type-1"]')?.textContent).toBe('正实雷（正类空雷）：');
+    expect(document.querySelector('label[for="dlg-custom-type-2"]')?.textContent).toBe('负实雷（负类空雷）：');
+    expect(document.querySelector('label[for="dlg-custom-type-3"]')?.textContent).toBe('正双曲虚雷（正类时雷）：');
+    expect(document.querySelector('label[for="dlg-custom-type-4"]')?.textContent).toBe('负双曲虚雷（负类时雷）：');
     closeDialog();
     expect(await result).toEqual({ applied: false });
   });
@@ -49,7 +51,7 @@ describe('modal dialogs', () => {
     const result = showCustomDialog(current);
     const box = document.querySelector<HTMLElement>('[role="dialog"]')!;
     expect(box.getAttribute('aria-modal')).toBe('true');
-    expect(document.getElementById(box.getAttribute('aria-labelledby')!)?.textContent).toBe(`${DLG.title} · 复数模式`);
+    expect(document.getElementById(box.getAttribute('aria-labelledby')!)?.textContent).toBe(`${DLG.title} · 圆复数模式`);
     for (const input of fields()) {
       expect(input.labels?.length).toBe(1);
       expect(input.labels?.[0].textContent).toBeTruthy();

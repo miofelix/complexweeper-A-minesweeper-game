@@ -227,7 +227,7 @@ export function showCustomDialog(current: { w: number; h: number; mines: number;
     const totalInput = mkRow('dlg-custom-total', DLG.total, DLG.totalHint, current.mines);
     const totalRow = totalInput.parentElement!;
 
-    // 四类雷配比（两列排布）
+    // 四类雷配比一行一种，给闵可夫斯基模式的完整雷名留足空间。
     const grid = document.createElement('div');
     grid.className = 'dlg-grid';
     const tc = hasExactMix ? current.typeCount : splitEvenly(current.mines);

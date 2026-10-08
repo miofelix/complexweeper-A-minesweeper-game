@@ -1,4 +1,4 @@
-// 最高分纪录：每个模式的三档标准难度各记最快秒数，localStorage 持久化。
+// 最高分纪录与声音偏好，使用 localStorage 持久化。
 // 替代桌面版的注册表（HKCU\Software\Complexweeper）。接口隔离，未来可换后端实现。
 
 import type { GameMode } from '../game/constants';
@@ -8,6 +8,24 @@ const KEYS: Record<GameMode, string> = {
   complex: 'complexweeper-web.scores.v1',
   hyper: 'complexweeper-web.scores.hyper.v1',
 };
+const SOUND_KEY = 'complexweeper-web.sound.v1';
+
+/** 与上游一致：默认开，只在保存的值为 0 时关闭。 */
+export function loadSoundEnabled(): boolean {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+export function saveSoundEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(SOUND_KEY, enabled ? '1' : '0');
+  } catch {
+    // 隐私模式等写不进去时，本次会话中的开关仍然生效。
+  }
+}
 
 export interface Scores {
   /** 下标 0/1/2 = 初级/中级/高级；0 = 还没有纪录 */

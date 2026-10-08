@@ -11,10 +11,10 @@ export class Game {
   n = 81;
   /** 玩法和判据是设置，newGame 保留它们。 */
   mode: GameMode = 'complex';
-  /** 双曲模式的宽松判据：仅要求显示值相同，旗数仍须相等。 */
+  /** 闵可夫斯基模式的宽松判据：仅要求显示值相同，旗数仍须相等。 */
   judge_loose = false;
   mine = new Uint8Array(MAX_CELLS);
-  /** 复数模式 a²+b²；双曲模式 a²−b²。是否为雷须读 mine，不能用 −1 判断。 */
+  /** 圆复数模式 a²+b²；闵可夫斯基模式 a²−b²。是否为雷须读 mine，不能用 −1 判断。 */
   clue = new Int16Array(MAX_CELLS).fill(-1);
   open = new Uint8Array(MAX_CELLS);
   flag = new Uint8Array(MAX_CELLS);
@@ -323,8 +323,8 @@ export class Game {
   }
 
   /**
-   * 旗数必须等于邻域雷数。复数模式允许实/虚总数交换；
-   * 双曲模式要求净分量的绝对值分别相等，宽松判据仅要求 signed D 相等。
+   * 旗数必须等于邻域雷数。圆复数模式允许实/虚总数交换；
+   * 闵可夫斯基模式要求类空、类时净分量的绝对值分别相等，宽松判据仅要求 signed D 相等。
    */
   matchComboTruth(cell: number): boolean {
     if (this.nbrMineCount(cell) !== this.nbrFlagCount(cell)) return false;

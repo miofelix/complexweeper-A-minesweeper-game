@@ -43,11 +43,14 @@
         flex-wrap: wrap;
         gap: 4px;
         justify-content: center;
-        max-width: 720px;
+        max-width: min(100%, 720px);
         margin-bottom: 12px;
       }
       #toolbar .group {
         display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 100%;
         gap: 4px;
         padding: 0 6px;
         border-left: 1px solid var(--shadow);
@@ -180,17 +183,17 @@
       }
       .dlg-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        column-gap: 18px;
+        grid-template-columns: minmax(0, 1fr);
         margin: 4px 0 6px;
       }
       .dlg-grid .dlg-row label {
-        width: 68px;
+        flex: 1;
+        width: auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
       .dlg-grid .dlg-row input {
-        flex: 1;
-        min-width: 0;
-        max-width: 70px;
+        flex: 0 0 70px;
       }
       .dlg-row:has(.dlg-error) {
         flex-wrap: wrap;
@@ -222,9 +225,12 @@
       }
       .mode-menu {
         position: relative;
+        max-width: 100%;
       }
       .mode-menu summary {
         list-style: none;
+        white-space: normal;
+        line-height: 1.4;
       }
       .mode-menu summary::-webkit-details-marker {
         display: none;
@@ -281,7 +287,7 @@
       </div>
       <div class="group">
         <details class="mode-menu" id="menu-complex">
-          <summary class="tool">复数模式</summary>
+          <summary class="tool">圆复数模式</summary>
           <div class="mode-options">
             <button class="tool" id="btn-beginner">初级 · 9×9 · 10 雷</button>
             <button class="tool" id="btn-intermediate">中级 · 16×16 · 40 雷</button>
@@ -291,7 +297,7 @@
           </div>
         </details>
         <details class="mode-menu" id="menu-hyper">
-          <summary class="tool">双曲复数模式</summary>
+          <summary class="tool">双曲复数模式（闵可夫斯基模式）</summary>
           <div class="mode-options">
             <button class="tool" id="btn-hyper-beginner">初级 · 9×9 · 10 雷</button>
             <button class="tool" id="btn-hyper-intermediate">中级 · 16×16 · 40 雷</button>

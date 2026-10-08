@@ -2,7 +2,7 @@
 
 > [中文 README](README.md)
 
-Minesweeper, but the mines are complex numbers. Choose complex or split-complex mode; a cell shows the magnitude (or formal magnitude) of the sum of the surrounding mines.
+Minesweeper, but the mines are complex numbers. Choose circular complex mode or split-complex mode (Minkowski mode); a cell shows the magnitude (or formal magnitude) of the sum of the surrounding mines.
 
 Reveal every non-mine cell to win.
 At the end, checkmarks and crosses show correctly and incorrectly identified mines, with sound effects for each mine type and for winning.
@@ -17,11 +17,11 @@ This repository is a modified version (fork) of [Yueqing-Chen/complexweeper-A-mi
 
 Many thanks to the original author 青月晓 for designing and open-sourcing this unique complex-number minesweeper, and to contributors such as [VoidForge](https://github.com/VoidForge) for their fixes and improvements to the original repository. The original code is licensed under GPL-3.0, and the modifications in this repository are published under the same license (see `LICENSE`).
 
-Upstream features have been ported from the original fork point `577750e` (v1.0.12) through `8932be5` (v1.1.3). See [docs/UPSTREAM.md](docs/UPSTREAM.md) for the scope and future synchronization steps.
+Upstream features have been ported from the original fork point `577750e` (v1.0.12) through `80502e5` (v1.2.0). See [docs/UPSTREAM.md](docs/UPSTREAM.md) for the scope and future synchronization steps.
 
 ## Rules
 
-**Complex mode** has four mine types: positive-real, negative-real, positive-imaginary, and negative-imaginary — that is, +1, −1, +i, and −i.
+**Circular complex mode** has four mine types: positive-real, negative-real, positive-imaginary, and negative-imaginary — that is, +1, −1, +i, and −i, with i² = −1.
 
 The number shown on a cell is the magnitude of the sum of all mines around it.
 
@@ -37,9 +37,9 @@ Zero and blank are not the same: a blank cell has no mines around it at all, whi
 You may expand around a numbered cell when the number of flags around it equals the true number of mines, and the real-to-imaginary ratio of the flags matches the true ratio or its reciprocal. You can use this to probe whether canceling pairs are nearby.
 Remember: you win by revealing all non-mine cells, not by flagging every mine correctly.
 
-**Split-complex mode** uses +1, −1, +j, and −j, with j² = 1. For a neighborhood sum a + bj, the clue is √(a² − b²); a negative value becomes an imaginary radical, so a = 0 and b = 2 displays 2i. There are 39 possible display values.
+**Split-complex mode (Minkowski mode)** has positive-real (positive spacelike), negative-real (negative spacelike), positive split-imaginary (positive timelike), and negative split-imaginary (negative timelike) mines: +1, −1, +j, and −j. The split-imaginary (timelike) unit satisfies j² = 1. For a neighborhood sum a + bj, the clue is the formal magnitude (spacetime interval) √(a² − b²); a negative value becomes an imaginary radical, so a = 0 and b = 2 displays 2i. There are 39 possible display values. The mode takes inspiration from the Minkowski spacetime metric and has little connection to general relativity.
 
-Expansion requires the correct total flag count and matching absolute real and j components of the flag and mine sums. Each component may change sign independently, but the components cannot be swapped. A nonempty neighborhood such as 1 + j can display 0; it does not flood open as a blank cell.
+Expansion requires the correct total flag count and matching absolute real (spacelike) and j (timelike) components of the flag and mine sums. Each component may change sign independently, but the components cannot be swapped. A nonempty neighborhood such as 1 + j can display 0; it does not flood open as a blank cell.
 
 Each mode menu contains its three presets, custom settings, and records. Selecting a preset or applying custom settings starts a new game; viewing records does not change the current board.
 
@@ -55,7 +55,7 @@ Each mode menu contains its three presets, custom settings, and records. Selecti
 
 Flag mode also makes left clicks cycle flags. With a pen, the tip reveals and the barrel button cycles flags. Large boards scroll horizontally; on touch screens, drag to pan without revealing a cell.
 
-The third and fourth flags use i or j according to the mode. Four mine sounds, a victory sound, and a once-per-second timer tick can be muted with the sound button.
+The third and fourth flags use i or j according to the mode. Four mine sounds, a victory sound, and a once-per-second timer tick are enabled by default and can be muted with the sound button. The browser saves your choice for future visits.
 
 ## Difficulty
 
@@ -66,7 +66,7 @@ The third and fourth flags use i or j according to the mode. Four mine sounds, a
 
 The custom dialog's distribution selector switches between random types and an exact mix. Changing the mode keeps your entries in both modes.
 
-Each mode has independent best times for the three standard presets, stored in the browser's `localStorage`. Existing complex-mode records are preserved; custom boards are not recorded.
+Each mode has independent best times for the three standard presets, stored in the browser's `localStorage`. Existing circular complex and split-complex records are preserved; custom boards are not recorded.
 
 ## Development
 
